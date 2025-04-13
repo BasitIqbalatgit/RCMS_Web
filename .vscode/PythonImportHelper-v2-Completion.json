@@ -1,0 +1,163 @@
+[
+    {
+        "label": "json",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "json",
+        "description": "json",
+        "detail": "json",
+        "documentation": {}
+    },
+    {
+        "label": "tensorflow",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "tensorflow",
+        "description": "tensorflow",
+        "detail": "tensorflow",
+        "documentation": {}
+    },
+    {
+        "label": "numpy",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "numpy",
+        "description": "numpy",
+        "detail": "numpy",
+        "documentation": {}
+    },
+    {
+        "label": "cv2",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "cv2",
+        "description": "cv2",
+        "detail": "cv2",
+        "documentation": {}
+    },
+    {
+        "label": "os",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "os",
+        "description": "os",
+        "detail": "os",
+        "documentation": {}
+    },
+    {
+        "label": "sys",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "sys",
+        "description": "sys",
+        "detail": "sys",
+        "documentation": {}
+    },
+    {
+        "label": "argparse",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "argparse",
+        "description": "argparse",
+        "detail": "argparse",
+        "documentation": {}
+    },
+    {
+        "label": "YOLO",
+        "importPath": "ultralytics",
+        "description": "ultralytics",
+        "isExtraImport": true,
+        "detail": "ultralytics",
+        "documentation": {}
+    },
+    {
+        "label": "_Known",
+        "kind": 6,
+        "importPath": "node_modules.flatted.python.flatted",
+        "description": "node_modules.flatted.python.flatted",
+        "peekOfCode": "class _Known:\n    def __init__(self):\n        self.key = []\n        self.value = []\nclass _String:\n    def __init__(self, value):\n        self.value = value\ndef _array_keys(value):\n    keys = []\n    i = 0",
+        "detail": "node_modules.flatted.python.flatted",
+        "documentation": {}
+    },
+    {
+        "label": "_String",
+        "kind": 6,
+        "importPath": "node_modules.flatted.python.flatted",
+        "description": "node_modules.flatted.python.flatted",
+        "peekOfCode": "class _String:\n    def __init__(self, value):\n        self.value = value\ndef _array_keys(value):\n    keys = []\n    i = 0\n    for _ in value:\n        keys.append(i)\n        i += 1\n    return keys",
+        "detail": "node_modules.flatted.python.flatted",
+        "documentation": {}
+    },
+    {
+        "label": "parse",
+        "kind": 2,
+        "importPath": "node_modules.flatted.python.flatted",
+        "description": "node_modules.flatted.python.flatted",
+        "peekOfCode": "def parse(value, *args, **kwargs):\n    json = _json.loads(value, *args, **kwargs)\n    wrapped = []\n    for value in json:\n        wrapped.append(_wrap(value))\n    input = []\n    for value in wrapped:\n        if isinstance(value, _String):\n            input.append(value.value)\n        else:",
+        "detail": "node_modules.flatted.python.flatted",
+        "documentation": {}
+    },
+    {
+        "label": "stringify",
+        "kind": 2,
+        "importPath": "node_modules.flatted.python.flatted",
+        "description": "node_modules.flatted.python.flatted",
+        "peekOfCode": "def stringify(value, *args, **kwargs):\n    known = _Known()\n    input = []\n    output = []\n    i = int(_index(known, input, value))\n    while i < len(input):\n        output.append(_transform(known, input, input[i]))\n        i += 1\n    return _json.dumps(output, *args, **kwargs)",
+        "detail": "node_modules.flatted.python.flatted",
+        "documentation": {}
+    },
+    {
+        "label": "preprocess_image",
+        "kind": 2,
+        "importPath": "car",
+        "description": "car",
+        "peekOfCode": "def preprocess_image(image_path, img_size=128):\n    img = cv2.imread(image_path)\n    if img is None:\n        raise ValueError(\"Invalid image file\")\n    img = cv2.resize(img, (img_size, img_size))\n    img = img / 255.0\n    return np.expand_dims(img, axis=0)\n# Function to classify the image\ndef classify_image(image_path):\n    image = preprocess_image(image_path)",
+        "detail": "car",
+        "documentation": {}
+    },
+    {
+        "label": "classify_image",
+        "kind": 2,
+        "importPath": "car",
+        "description": "car",
+        "peekOfCode": "def classify_image(image_path):\n    image = preprocess_image(image_path)\n    prediction = model.predict(image)\n    return \"This is a car.\" if prediction[0][0] > 0.5 else \"This is not a car.\"\n# Main function to be run from the command line with the image file as an argument\nif __name__ == \"__main__\":\n    parser = argparse.ArgumentParser(description='Classify whether an image contains a car or not.')\n    parser.add_argument('image_path', type=str, help='Path to the image file')\n    args = parser.parse_args()\n    try:",
+        "detail": "car",
+        "documentation": {}
+    },
+    {
+        "label": "MODEL_PATH",
+        "kind": 5,
+        "importPath": "car",
+        "description": "car",
+        "peekOfCode": "MODEL_PATH = 'car_classifier_model.h5'\n# Check if the model file exists\nif not os.path.exists(MODEL_PATH):\n    print(f\"Error: Model file not found at {os.path.abspath(MODEL_PATH)}\")\n    sys.exit(1)\nmodel = tf.keras.models.load_model(MODEL_PATH)\n# Function to preprocess the image\ndef preprocess_image(image_path, img_size=128):\n    img = cv2.imread(image_path)\n    if img is None:",
+        "detail": "car",
+        "documentation": {}
+    },
+    {
+        "label": "model",
+        "kind": 5,
+        "importPath": "car",
+        "description": "car",
+        "peekOfCode": "model = tf.keras.models.load_model(MODEL_PATH)\n# Function to preprocess the image\ndef preprocess_image(image_path, img_size=128):\n    img = cv2.imread(image_path)\n    if img is None:\n        raise ValueError(\"Invalid image file\")\n    img = cv2.resize(img, (img_size, img_size))\n    img = img / 255.0\n    return np.expand_dims(img, axis=0)\n# Function to classify the image",
+        "detail": "car",
+        "documentation": {}
+    },
+    {
+        "label": "segment_image",
+        "kind": 2,
+        "importPath": "yoloTest",
+        "description": "yoloTest",
+        "peekOfCode": "def segment_image(input_path, output_path):\n    # Load the YOLOv8 model\n    model = YOLO(YOLO_MODEL_PATH)\n    # Read the input image\n    image = cv2.imread(input_path)\n    if image is None:\n        raise ValueError(\"Failed to load input image\")\n    # Perform inference\n    results = model(image)\n    # Draw bounding boxes or segmentation masks on the image",
+        "detail": "yoloTest",
+        "documentation": {}
+    },
+    {
+        "label": "YOLO_MODEL_PATH",
+        "kind": 5,
+        "importPath": "yoloTest",
+        "description": "yoloTest",
+        "peekOfCode": "YOLO_MODEL_PATH = 'car_parts_detector.pt'\ndef segment_image(input_path, output_path):\n    # Load the YOLOv8 model\n    model = YOLO(YOLO_MODEL_PATH)\n    # Read the input image\n    image = cv2.imread(input_path)\n    if image is None:\n        raise ValueError(\"Failed to load input image\")\n    # Perform inference\n    results = model(image)",
+        "detail": "yoloTest",
+        "documentation": {}
+    }
+]
