@@ -34,11 +34,28 @@ const passwordValidationRegex = new RegExp(
   "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])(?=.{8,})"
 );
 
+// Name validation regex - must contain at least one letter
+const nameValidationRegex = new RegExp("^(?=.*[a-zA-Z])[a-zA-Z0-9\\s'-]+$");
+
 const formSchema = z
   .object({
-    full_name: z.string().min(3, {
-      message: "Your name must be at least 3 characters.",
-    }),
+    full_name: z
+      .string()
+      .min(3, {
+        message: "Your name must be at least 3 characters.",
+      })
+      .max(50, {
+        message: "Your name must be less than 50 characters.",
+      })
+      .regex(nameValidationRegex, {
+        message: "Name must contain at least one letter and can only include letters, numbers, spaces, apostrophes, and hyphens.",
+      })
+      .refine((name) => {
+        // Additional check: name cannot be only numbers, special characters, or spaces
+        return /[a-zA-Z]/.test(name) && name.trim().length > 0;
+      }, {
+        message: "Name must contain at least one letter and cannot be empty or only special characters.",
+      }),
     email: z.string().email({
       message: "Please enter a valid email!",
     }),
@@ -87,7 +104,7 @@ export function SignUpForm() {
     try {
       // Map form data to API expected format
       const userData = {
-        name: values.full_name, // Map full_name to name
+        name: values.full_name.trim(), // Trim whitespace from name
         email: values.email,
         password: values.password,
         role: UserRole.ADMIN, // Default role set to ADMIN
@@ -258,7 +275,7 @@ export function SignUpForm() {
                       onBlur={() => setIsFocused(false)}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-xs sm:text-sm" />
                 </FormItem>
               )}
             />
