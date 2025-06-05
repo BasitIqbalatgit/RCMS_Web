@@ -90,7 +90,7 @@ export function SignUpForm() {
         name: values.full_name, // Map full_name to name
         email: values.email,
         password: values.password,
-        role: UserRole.OPERATOR, // Default role set to ADMIN
+        role: UserRole.ADMIN, // Default role set to ADMIN
       };
       
       const response = await fetch('/api/auth/register', {

@@ -425,24 +425,28 @@ const ApplyModification: React.FC = () => {
         </div>
 
         <div className="mt-6 text-center text-sm text-gray-500">
-          <p>This component uses a TensorFlow model to classify car images</p>
+          <p>This component uses a CNN model to classify car images</p>
         </div>
       </div>
 
       {/* Right Section: Segmented Parts */}
       <div className="w-full lg:w-1/2">
-        <h1 className="text-3xl font-bold text-center mb-8">Car Segmentation</h1>
-        <div className="border-2 border-gray-300 rounded-lg p-6 h-fit shadow-md">
-          <h2 className="text-2xl font-bold mb-4 text-center">Segmented Parts</h2>
+        <h1 className="text-3xl font-bold text-center mb-8">Car Part Detection</h1>
+        <div className="border-2 border-gray-300 rounded-lg p-6  shadow-md h-fit">
+          <h2 className="text-2xl font-bold mb-4 text-center">Detected Parts</h2>
           {segmentedImageUrl ? (
             <img
               src={segmentedImageUrl}
               alt="Segmented Image"
               className="max-h-64 mx-auto rounded-lg shadow-md object-contain"
             />
+
           ) : (
-            <p className="text-gray-600">Upload a car image to see segmented parts.</p>
+            <p className="text-gray-600">Upload a car image to see Detected parts.</p>
           )}
+        </div>
+        <div className="mt-6 text-center text-sm text-gray-500">
+          <p>This component uses a YOLO model to Detect car parts </p>
         </div>
       </div>
     </div>

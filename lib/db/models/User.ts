@@ -1,3 +1,4 @@
+// /lib/db/models/User.ts
 import mongoose from 'mongoose';
 import { Schema } from 'mongoose';
 

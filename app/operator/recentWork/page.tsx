@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Download, RefreshCw, Search } from 'lucide-react'; // Add Search icon
 import jsPDF from 'jspdf';
 import ModificationDetailsModal from '@/components/operatorComponents/ModificationDetailsModal';
+import img1 from '@/public/landing-page/1.jpg';
 
 // Define interfaces
 interface ModificationDetails {
@@ -51,8 +52,8 @@ const fakeRecentWork: Modification[] = [
   {
     _id: '1',
     operator_id: 'operator123',
-    original_image_url: 'https://via.placeholder.com/150?text=Original+Car+1',
-    modified_image_url: 'https://via.placeholder.com/150?text=Modified+Rims',
+    original_image_url: '/landing-page/1.jpg',
+    modified_image_url: '/landing-page/2.jpg',
     modification_type: 'Rims',
     modification_details: { rim_style: 'Alloy', color: 'Black' },
     status: 'Saved',
@@ -63,8 +64,8 @@ const fakeRecentWork: Modification[] = [
   {
     _id: '2',
     operator_id: 'operator123',
-    original_image_url: 'https://via.placeholder.com/150?text=Original+Car+2',
-    modified_image_url: 'https://via.placeholder.com/150?text=Modified+Paint',
+    original_image_url: '/landing-page/3.jpg',
+    modified_image_url: '/landing-page/4.jpg',
     modification_type: 'Paint',
     modification_details: { color: 'Red' },
     status: 'Saved',
@@ -75,8 +76,8 @@ const fakeRecentWork: Modification[] = [
   {
     _id: '3',
     operator_id: 'operator123',
-    original_image_url: 'https://via.placeholder.com/150?text=Original+Car+3',
-    modified_image_url: 'https://via.placeholder.com/150?text=Modified+Spoiler',
+    original_image_url: '/landing-page/5.jpg',
+    modified_image_url: '/landing-page/6.jpg',
     modification_type: 'Spoiler',
     modification_details: { material: 'Carbon Fiber' },
     status: 'Saved',
@@ -87,8 +88,8 @@ const fakeRecentWork: Modification[] = [
   {
     _id: '4',
     operator_id: 'operator123',
-    original_image_url: 'https://via.placeholder.com/150?text=Original+Car+4',
-    modified_image_url: 'https://via.placeholder.com/150?text=Modified+Lights',
+    original_image_url: '/landing-page/7.jpg',
+    modified_image_url: '/landing-page/8.jpg',
     modification_type: 'Headlights',
     modification_details: { type: 'LED', brightness: 'High' },
     status: 'Saved',

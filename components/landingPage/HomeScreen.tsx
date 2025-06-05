@@ -9,17 +9,17 @@ import { MarqueeColumn } from "./MarqueeColumn";
 import { AnimatedGradientText } from "@/components/magicui/animated-gradient-text";
 
 // Import your images...
-import img1 from "@/public/hero-images/Confident Businesswoman on Turquoise Backdrop.jpeg";
-import img2 from "@/public/hero-images/Charismatic Young Man with a Warm Smile and Stylish Tousled Hair.jpeg";
-import img3 from "@/public/hero-images/Confident Woman in Red Outfit.jpeg";
-import img4 from "@/public/hero-images/Confident Woman in Urban Setting.jpeg";
-import img5 from "@/public/hero-images/Futuristic Helmet Portrait.jpeg";
-import img6 from "@/public/hero-images/Futuristic Woman in Armor.jpeg";
-import img7 from "@/public/hero-images/Man in Brown Suit.jpeg";
-import img8 from "@/public/hero-images/Poised Elegance of a Young Professional.jpeg";
-import img9 from "@/public/hero-images/Professional Business Portrait.jpeg";
-import img10 from "@/public/hero-images/Professional Woman in Navy Blue Suit.jpeg";
-import img11 from "@/public/hero-images/Sophisticated Businessman Portrait.jpeg";
+import img1 from "@/public/landing-page/1.jpg";
+import img2 from "@/public/landing-page/2.jpg";
+import img3 from "@/public/landing-page/3.jpg";
+import img4 from "@/public/landing-page/4.jpg";
+import img5 from "@/public/landing-page/5.jpg";
+import img6 from "@/public/landing-page/6.jpg";
+import img7 from "@/public/landing-page/7.jpg";
+import img8 from "@/public/landing-page/8.jpg";
+import img9 from "@/public/landing-page/9.jpg";
+import img10 from "@/public/landing-page/10.jpg";
+import img11 from "@/public/landing-page/11.jpg";
 
 // Define Images array here in HomeScreen
 const Images = [

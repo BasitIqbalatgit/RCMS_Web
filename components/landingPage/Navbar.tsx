@@ -40,7 +40,7 @@ const NavItems = () => {
         className="text-sm font-medium hover:underline underline-offset-4 block py-2"
       >
         <Button variant="outline" className="w-full">
-          LogIn
+          Sign In
         </Button>
       </Link>
       <Link

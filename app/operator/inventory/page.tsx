@@ -1,61 +1,85 @@
-'use client'
+'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
-  Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle
-} from "@/components/ui/card";
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
-  Search, Filter, Download, Eye, ShoppingCart, Package
-} from "lucide-react";
+  Search,
+  Filter,
+  Download,
+  Eye,
+  AlertTriangle,
+  CheckCircle,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
+import { fetchInventory } from '@/lib/services/inventoryService';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-// Type definition for Inventory Items
-type InventoryItem = {
-  id: number;
+// Type definition for Inventory Items (aligned with backend)
+interface InventoryItem {
+  id: string;
   name: string;
   quantity: number;
   available: number;
   image: string;
   category: string;
   price: number;
-};
+  adminId: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
-// ✅ New type for filter options
-type FilterOptions = {
+// Type for filter options
+interface FilterOptions {
   stockStatus: 'all' | 'inStock' | 'lowStock';
   priceMin: number | '';
   priceMax: number | '';
-};
+}
 
-export default function OperatorInventoryPage() {
-  const [inventory] = useState<InventoryItem[]>([
-    { id: 1, name: "Rim - Sport Alloy 18\"", quantity: 24, available: 18, image: "/api/placeholder/100/100", category: "Rims", price: 249.99 },
-    { id: 2, name: "Spoiler - Carbon Fiber", quantity: 10, available: 7, image: "/api/placeholder/100/100", category: "Spoilers", price: 399.99 },
-    { id: 3, name: "Paint - Deep Blue Metallic", quantity: 15, available: 12, image: "/api/placeholder/100/100", category: "Paint", price: 149.99 },
-    { id: 4, name: "Rim - Classic Chrome 17\"", quantity: 16, available: 8, image: "/api/placeholder/100/100", category: "Rims", price: 199.99 },
-    { id: 5, name: "Spoiler - Adjustable Aluminum", quantity: 5, available: 3, image: "/api/placeholder/100/100", category: "Spoilers", price: 299.99 },
-    { id: 6, name: "Paint - Ruby Red Pearl", quantity: 8, available: 5, image: "/api/placeholder/100/100", category: "Paint", price: 179.99 },
-    { id: 7, name: "Rim - Off-road 20\"", quantity: 12, available: 6, image: "/api/placeholder/100/100", category: "Rims", price: 349.99 },
-    { id: 8, name: "Hood Scoop - Black Matte", quantity: 7, available: 4, image: "/api/placeholder/100/100", category: "Body Kits", price: 129.99 },
-  ]);
+const OperatorInventoryPage: React.FC = () => {
+  const { data: session, status } = useSession();
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [viewItemDialog, setViewItemDialog] = useState<boolean>(false);
   const [currentItem, setCurrentItem] = useState<InventoryItem | null>(null);
-  // ✅ New state for filter dialog and options
   const [filterDialog, setFilterDialog] = useState<boolean>(false);
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     stockStatus: 'all',
@@ -63,10 +87,44 @@ export default function OperatorInventoryPage() {
     priceMax: '',
   });
 
-  // ✅ Updated filteredInventory to include filterOptions
-  const filteredInventory = inventory.filter(item => {
+  // Fetch inventory data on component mount
+  useEffect(() => {
+    const loadInventory = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchInventory();
+        // Transform backend data to match frontend InventoryItem type
+        const transformedData = data.map((item: any) => ({
+          id: item._id.toString(), // Map _id to id
+          name: item.name,
+          quantity: item.quantity,
+          available: item.available,
+          image: item.image || '/api/placeholder/100/100',
+          category: item.category,
+          price: item.price,
+          adminId: item.adminId.toString(), // Convert ObjectId to string
+          createdAt: new Date(item.createdAt).toISOString(), // Convert Date to string
+          updatedAt: new Date(item.updatedAt).toISOString(), // Convert Date to string
+        }));
+        setInventory(transformedData);
+        setError(null);
+      } catch (err) {
+        setError('Failed to load inventory data. Please try again.');
+        console.error('Error loading inventory:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (status === 'authenticated') {
+      loadInventory();
+    }
+  }, [status]);
+
+  // Filtered inventory based on search, category, and filter options
+  const filteredInventory = inventory.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
     const matchesStockStatus =
       filterOptions.stockStatus === 'all' ||
       (filterOptions.stockStatus === 'inStock' && item.available / item.quantity >= 0.3) ||
@@ -76,57 +134,81 @@ export default function OperatorInventoryPage() {
     return matchesSearch && matchesCategory && matchesStockStatus && matchesPriceMin && matchesPriceMax;
   });
 
+  // Calculate stats
   const totalItems = inventory.reduce((sum, item) => sum + item.quantity, 0);
   const availableItems = inventory.reduce((sum, item) => sum + item.available, 0);
-  const categories = [...new Set(inventory.map(item => item.category))];
-  const lowStockItems = inventory.filter(item => item.available / item.quantity < 0.3).length;
+  const categories = [...new Set(inventory.map((item) => item.category))];
+  const lowStockItems = inventory.filter((item) => item.available / item.quantity < 0.3).length;
 
-  const handleViewItem = (item: InventoryItem) => {
+  // Handle view item
+  const handleViewItem = useCallback((item: InventoryItem) => {
     setCurrentItem(item);
     setViewItemDialog(true);
-  };
+  }, []);
 
-  // ✅ Handler for applying filters
-  const applyFilters = () => {
+  // Handle apply filters
+  const applyFilters = useCallback(() => {
     setFilterDialog(false);
-  };
+  }, []);
 
-  // ✅ Handler for resetting filters
-  const resetFilters = () => {
+  // Handle reset filters
+  const resetFilters = useCallback(() => {
     setFilterOptions({
       stockStatus: 'all',
       priceMin: '',
       priceMax: '',
     });
-  };
+  }, []);
 
-  // ✅ Handler for exporting inventory to CSV
-  const exportToCSV = () => {
+  // Handle export to CSV
+  const exportToCSV = useCallback(() => {
     const headers = ['ID', 'Name', 'Category', 'Price', 'Quantity', 'Available'];
-    const rows = filteredInventory.map(item => [
+    const rows = filteredInventory.map((item) => [
       item.id,
-      `"${item.name.replace(/"/g, '""')}"`, // Escape quotes in CSV
+      `"${item.name.replace(/"/g, '""')}"`,
       item.category,
       item.price.toFixed(2),
       item.quantity,
       item.available,
     ]);
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(',')),
-    ].join('\n');
-
+    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
     link.setAttribute('href', url);
     link.setAttribute('download', 'inventory_export.csv');
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  };
+  }, [filteredInventory]);
+
+  // Loading state
+  if (status === 'loading' || loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
+  }
+
+  // Unauthenticated state
+  if (status === 'unauthenticated') {
+    return (
+      <div className="container mx-auto py-12">
+        <Alert className="bg-yellow-50 border-yellow-500">
+          <AlertCircle className="h-4 w-4 text-yellow-600" />
+          <AlertTitle className="text-yellow-600">Authentication Required</AlertTitle>
+          <AlertDescription>Please sign in to access the inventory overview.</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  // Define tab categories that are available in the UI
+  const tabCategories = ['Rims', 'Spoilers', 'Paint', 'HeadLight', 'SideMirror'];
 
   return (
     <div className="container mx-auto py-6 space-y-8">
@@ -152,7 +234,7 @@ export default function OperatorInventoryPage() {
           <CardContent>
             <div className="text-2xl font-bold">{availableItems}</div>
             <p className="text-xs text-gray-500">
-              {Math.round((availableItems / totalItems) * 100)}% of total inventory
+              {totalItems ? Math.round((availableItems / totalItems) * 100) : 0}% of total inventory
             </p>
           </CardContent>
         </Card>
@@ -175,17 +257,26 @@ export default function OperatorInventoryPage() {
         </Card>
       </div>
 
+      {/* Error Alert */}
+      {error && (
+        <Alert className="bg-red-50 border-red-500">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertTitle className="text-red-600">Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       {/* Inventory by Category Tabs */}
       <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid grid-cols-5 mb-4">
+        <TabsList className="grid grid-cols-6 mb-4">
           <TabsTrigger value="all">All Items</TabsTrigger>
-          <TabsTrigger value="rims">Rims</TabsTrigger>
-          <TabsTrigger value="spoilers">Spoilers</TabsTrigger>
-          <TabsTrigger value="paint">Paint</TabsTrigger>
-          <TabsTrigger value="bodykits">Body Kits</TabsTrigger>
+          {tabCategories.map((category) => (
+            <TabsTrigger key={category} value={category}>
+              {category === 'SideMirror' ? 'Side Mirror' : category}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
-        {/* ALL Items Tab */}
         <TabsContent value="all">
           <Card>
             <CardHeader>
@@ -207,18 +298,16 @@ export default function OperatorInventoryPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map(category => (
+                    {categories.map((category) => (
                       <SelectItem key={category} value={category}>
                         {category}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {/* ✅ Updated Filter Button to open dialog */}
                 <Button variant="outline" className="gap-1" onClick={() => setFilterDialog(true)}>
                   <Filter className="h-4 w-4" /> Filter
                 </Button>
-                {/* ✅ Updated Export List Button to trigger CSV download */}
                 <Button variant="outline" className="gap-1" onClick={exportToCSV}>
                   <Download className="h-4 w-4" /> Export List
                 </Button>
@@ -248,7 +337,12 @@ export default function OperatorInventoryPage() {
                     filteredInventory.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>
-                          <img src={item.image} alt={item.name} className="w-12 h-12 rounded" />
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-12 h-12 rounded"
+                            onError={(e) => (e.currentTarget.src = '/api/placeholder/100/100')}
+                          />
                         </TableCell>
                         <TableCell className="font-medium">{item.name}</TableCell>
                         <TableCell>{item.category}</TableCell>
@@ -277,30 +371,146 @@ export default function OperatorInventoryPage() {
             </CardFooter>
           </Card>
         </TabsContent>
+
+        {/* Category Tab Contents */}
+        {tabCategories.map((category) => (
+          <TabsContent key={category} value={category}>
+            <Card>
+              <CardHeader>
+                <CardTitle>{category === 'SideMirror' ? 'Side Mirror' : category} Inventory</CardTitle>
+                <CardDescription>Browse available {category === 'SideMirror' ? 'side mirrors' : category.toLowerCase()}.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Image</TableHead>
+                      <TableHead>Item Name</TableHead>
+                      <TableHead className="text-right">Price</TableHead>
+                      <TableHead className="text-right">Available</TableHead>
+                      <TableHead className="text-right">Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredInventory.filter((item) => item.category === category).length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-10 text-gray-500">
+                          No {category === 'SideMirror' ? 'side mirrors' : category.toLowerCase()} found matching your criteria.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredInventory
+                        .filter((item) => item.category === category)
+                        .map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <img
+                                src={item.image}
+                                alt={item.name}
+                                className="w-12 h-12 rounded"
+                                onError={(e) => (e.currentTarget.src = '/api/placeholder/100/100')}
+                              />
+                            </TableCell>
+                            <TableCell className="font-medium">{item.name}</TableCell>
+                            <TableCell className="text-right">${item.price.toFixed(2)}</TableCell>
+                            <TableCell className="text-right">{item.available}</TableCell>
+                            <TableCell className="text-right">
+                              {item.available / item.quantity < 0.3 ? (
+                                <Badge variant="destructive">Low Stock</Badge>
+                              ) : (
+                                <Badge variant="outline">In Stock</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm" onClick={() => handleViewItem(item)}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+              <CardFooter className="text-xs text-muted-foreground">
+                Showing {filteredInventory.filter((item) => item.category === category).length} items
+              </CardFooter>
+            </Card>
+          </TabsContent>
+        ))}
       </Tabs>
 
-      {/* Dialog for Viewing Item Details */}
+      {/* View Item Dialog */}
       <Dialog open={viewItemDialog} onOpenChange={setViewItemDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>{currentItem?.name}</DialogTitle>
+            <DialogTitle className="text-xl font-semibold text-gray-800">
+              {currentItem?.name}
+            </DialogTitle>
           </DialogHeader>
+
           {currentItem && (
             <div className="space-y-4">
-              <img src={currentItem.image} alt={currentItem.name} className="w-32 h-32 rounded" />
-              <p><strong>Category:</strong> {currentItem.category}</p>
-              <p><strong>Price:</strong> ${currentItem.price.toFixed(2)}</p>
-              <p><strong>Available:</strong> {currentItem.available} / {currentItem.quantity}</p>
-              <p><strong>Status:</strong> {currentItem.available / currentItem.quantity < 0.3 ? "Low Stock" : "In Stock"}</p>
+              <div className="flex justify-center">
+                <img
+                  src={currentItem.image}
+                  alt={currentItem.name}
+                  className="w-40 h-40 rounded-xl object-cover shadow-sm border"
+                  onError={(e) => (e.currentTarget.src = '/api/placeholder/100/100')}
+                />
+              </div>
+
+              <div className="space-y-2 text-sm text-gray-700">
+                <div className="flex justify-between">
+                  <span className="font-medium">Category:</span>
+                  <span>{currentItem.category}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="font-medium">Price:</span>
+                  <span className="text-green-600 font-semibold">${currentItem.price.toFixed(2)}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="font-medium">Stock:</span>
+                  <span>
+                    {currentItem.available} / {currentItem.quantity}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Status:</span>
+                  <Badge
+                    variant={currentItem.available / currentItem.quantity < 0.3 ? 'destructive' : 'default'}
+                    className="flex items-center gap-1"
+                  >
+                    {currentItem.available / currentItem.quantity < 0.3 ? (
+                      <>
+                        <AlertTriangle className="w-4 h-4" />
+                        Low Stock
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        In Stock
+                      </>
+                    )}
+                  </Badge>
+                </div>
+              </div>
             </div>
           )}
-          <DialogFooter>
-            <Button onClick={() => setViewItemDialog(false)}>Close</Button>
+
+          <DialogFooter className="mt-6">
+            <Button variant="outline" onClick={() => setViewItemDialog(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* ✅ New Dialog for Filter Options */}
+      {/* Filter Dialog */}
       <Dialog open={filterDialog} onOpenChange={setFilterDialog}>
         <DialogContent>
           <DialogHeader>
@@ -357,4 +567,6 @@ export default function OperatorInventoryPage() {
       </Dialog>
     </div>
   );
-}
+};
+
+export default OperatorInventoryPage;
