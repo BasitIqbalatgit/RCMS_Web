@@ -1,722 +1,994 @@
+
+// 'use client';
+// import React, { useState, useEffect } from 'react';
+// import {
+//   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+//   PieChart, Pie, Cell, AreaChart, Area, ComposedChart, ScatterChart, Scatter
+// } from 'recharts';
+// import { TrendingUp, TrendingDown, Users, CreditCard, DollarSign, Activity, AlertCircle, Calendar } from 'lucide-react';
+
+// interface AdminData {
+//   id: string;
+//   name: string;
+//   email: string;
+//   centreName: string;
+//   location: string;
+//   creditBalance: number;
+//   createdAt: string;
+// }
+
+// interface TransactionData {
+//   _id: string;
+//   userId: string;
+//   type: string;
+//   status: string;
+//   amount: number;
+//   credits: number;
+//   description: string;
+//   createdAt: string;
+// }
+
+// const AnalyticsDashboard = () => {
+//   const [admins, setAdmins] = useState<AdminData[]>([]);
+//   const [transactions, setTransactions] = useState<TransactionData[]>([]);
+//   const [loading, setLoading] = useState(true);
+//   const [dateRange, setDateRange] = useState('monthly');
+//   const [selectedMetric, setSelectedMetric] = useState('revenue');
+
+//   useEffect(() => {
+//     const fetchData = async () => {
+//       try {
+//         const [adminsRes, transactionsRes] = await Promise.all([
+//           fetch('/api/admins'),
+//           fetch('/api/transactions') // Fetch more data for better analytics
+//         ]);
+
+//         const adminsData = await adminsRes.json();
+//         const transactionsData = await transactionsRes.json();
+
+//         console.log("Admin Data : ", adminsData.length, " and Transaction Data : ", transactionsData);
+//         setAdmins(Array.isArray(adminsData) ? adminsData : []);
+//         setTransactions(Array.isArray(transactionsData.transactions) ? transactionsData.transactions : []);
+//       } catch (error) {
+//         console.error('Error fetching data:', error);
+//         setAdmins([]);
+//         setTransactions([]);
+//       } finally {
+//         setLoading(false);
+//       }
+//     };
+
+//     fetchData();
+//   });
+
+//   if (loading) {
+//     return (
+//       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+//         <div className="text-center">
+//           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+//           <p className="text-gray-600">Loading analytics...</p>
+//         </div>
+//       </div>
+//     );
+//   }
+
+//   // Core Metrics Calculations
+//   const totalAdmins = admins.length;
+//   const totalCreditBalance = admins.reduce((sum, a) => sum + (a.creditBalance || 0), 0);
+//   const avgCreditBalance = totalAdmins ? totalCreditBalance / totalAdmins : 0;
+
+//   const completedTransactions = transactions.filter(t => t.status === 'completed');
+//   const totalRevenue = completedTransactions
+//     .filter(t => t.type === 'credit_purchase')
+//     .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+//   const totalCreditsUsed = transactions
+//     .filter(t => t.type === 'credit_usage')
+//     .reduce((sum, t) => sum + (t.credits || 0), 0);
+
+//   const totalRefunds = transactions
+//     .filter(t => t.type === 'refund')
+//     .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+//   const failedTransactions = transactions.filter(t => t.status === 'failed').length;
+//   const successRate = transactions.length ? ((completedTransactions.length / transactions.length) * 100) : 0;
+
+//   // Time-based Data Processing
+//   const getTimeSeriesData = () => {
+//     const grouped: Record<string, {
+//       revenue: number;
+//       credits: number;
+//       transactions: number;
+//       refunds: number;
+//       newAdmins: number;
+//     }> = {};
+
+//     transactions.forEach(t => {
+//       const date = new Date(t.createdAt);
+//       let key = formatDateKey(date);
+
+//       if (!grouped[key]) {
+//         grouped[key] = { revenue: 0, credits: 0, transactions: 0, refunds: 0, newAdmins: 0 };
+//       }
+
+//       grouped[key].transactions++;
+
+//       if (t.type === 'credit_purchase' && t.status === 'completed') {
+//         grouped[key].revenue += t.amount || 0;
+//       }
+//       if (t.type === 'credit_usage') {
+//         grouped[key].credits += t.credits || 0;
+//       }
+//       if (t.type === 'refund') {
+//         grouped[key].refunds += t.amount || 0;
+//       }
+//     });
+
+//     // Add new admin registrations
+//     admins.forEach(admin => {
+//       const date = new Date(admin.createdAt);
+//       let key = formatDateKey(date);
+
+//       if (!grouped[key]) {
+//         grouped[key] = { revenue: 0, credits: 0, transactions: 0, refunds: 0, newAdmins: 0 };
+//       }
+//       grouped[key].newAdmins++;
+//     });
+
+//     return Object.entries(grouped)
+//       .map(([name, values]) => ({ name, ...values }))
+//       .sort((a, b) => a.name.localeCompare(b.name));
+//   };
+
+//   const formatDateKey = (date: Date): string => {
+//     switch (dateRange) {
+//       case 'daily':
+//         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+//       case 'weekly':
+//         const weekStart = new Date(date);
+//         weekStart.setDate(date.getDate() - date.getDay());
+//         return `${weekStart.getFullYear()}-W${String(Math.ceil(weekStart.getDate() / 7)).padStart(2, '0')}`;
+//       case 'monthly':
+//         return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+//       default:
+//         return date.toISOString().split('T')[0];
+//     }
+//   };
+
+//   // Location-based Analytics
+//   const getLocationData = () => {
+//     const locationStats: Record<string, {
+//       admins: number;
+//       totalCredits: number;
+//       revenue: number;
+//     }> = {};
+
+//     admins.forEach(admin => {
+//       const location = admin.location || 'Unknown';
+//       if (!locationStats[location]) {
+//         locationStats[location] = { admins: 0, totalCredits: 0, revenue: 0 };
+//       }
+//       locationStats[location].admins++;
+//       locationStats[location].totalCredits += admin.creditBalance || 0;
+//     });
+
+//     transactions.forEach(t => {
+//       const admin = admins.find(a => a.id === t.userId);
+//       const location = admin?.location || 'Unknown';
+
+//       if (!locationStats[location]) {
+//         locationStats[location] = { admins: 0, totalCredits: 0, revenue: 0 };
+//       }
+
+//       if (t.type === 'credit_purchase' && t.status === 'completed') {
+//         locationStats[location].revenue += t.amount || 0;
+//       }
+//     });
+
+//     return Object.entries(locationStats).map(([location, stats]) => ({
+//       location,
+//       ...stats
+//     }));
+//   };
+
+//   // Transaction Status Distribution
+//   const getStatusDistribution = () => {
+//     const statusCounts: Record<string, number> = {};
+//     transactions.forEach(t => {
+//       statusCounts[t.status] = (statusCounts[t.status] || 0) + 1;
+//     });
+
+//     return Object.entries(statusCounts).map(([status, count]) => ({
+//       name: status.charAt(0).toUpperCase() + status.slice(1),
+//       value: count,
+//       percentage: ((count / transactions.length) * 100).toFixed(1)
+//     }));
+//   };
+
+//   // Admin Performance Metrics
+//   const getAdminPerformance = () => {
+//     return admins.map(admin => {
+//       const adminTransactions = transactions.filter(t => t.userId === admin.id);
+//       const revenue = adminTransactions
+//         .filter(t => t.type === 'credit_purchase' && t.status === 'completed')
+//         .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+//       const creditsUsed = adminTransactions
+//         .filter(t => t.type === 'credit_usage')
+//         .reduce((sum, t) => sum + (t.credits || 0), 0);
+
+//       return {
+//         name: admin.name,
+//         email: admin.email,
+//         location: admin.location || 'Unknown',
+//         creditBalance: admin.creditBalance || 0,
+//         revenue,
+//         creditsUsed,
+//         transactionCount: adminTransactions.length,
+//         avgTransactionValue: adminTransactions.length ? revenue / adminTransactions.length : 0
+//       };
+//     }).sort((a, b) => b.revenue - a.revenue);
+//   };
+
+//   const timeSeriesData = getTimeSeriesData();
+//   const locationData = getLocationData();
+//   const statusDistribution = getStatusDistribution();
+//   const adminPerformance = getAdminPerformance();
+
+//   const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+
+//   const MetricCard = ({ title, value, icon: Icon, trend, color = 'blue' }: any) => (
+//     <div className="bg-white rounded-lg shadow-sm border p-6">
+//       <div className="flex items-center justify-between">
+//         <div>
+//           <p className="text-sm font-medium text-gray-600">{title}</p>
+//           <p className={`text-2xl font-bold text-${color}-600`}>{value}</p>
+//         </div>
+//         <div className={`p-3 bg-${color}-100 rounded-full`}>
+//           <Icon className={`h-6 w-6 text-${color}-600`} />
+//         </div>
+//       </div>
+//       {trend && (
+//         <div className="mt-4 flex items-center">
+//           {trend.isPositive ? (
+//             <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+//           ) : (
+//             <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
+//           )}
+//           <span className={`text-sm ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+//             {trend.value}% vs last period
+//           </span>
+//         </div>
+//       )}
+//     </div>
+//   );
+
+//   return (
+//     <div className="min-h-screen bg-gray-50">
+//       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+//         {/* Header */}
+//         <div className="mb-8">
+//           <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
+//           <p className="text-gray-600 mt-2">Comprehensive insights into your platform performance</p>
+//         </div>
+
+//         {/* Time Range Selector */}
+//         <div className="mb-6">
+//           <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
+//             {['daily', 'weekly', 'monthly'].map((range) => (
+//               <button
+//                 key={range}
+//                 onClick={() => setDateRange(range)}
+//                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${dateRange === range
+//                   ? 'bg-white text-gray-900 shadow-sm'
+//                   : 'text-gray-600 hover:text-gray-900'
+//                   }`}
+//               >
+//                 {range.charAt(0).toUpperCase() + range.slice(1)}
+//               </button>
+//             ))}
+//           </div>
+//         </div>
+
+//         {/* Key Metrics */}
+//         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+//           <MetricCard
+//             title="Total Revenue"
+//             value={`$${totalRevenue.toLocaleString()}`}
+//             icon={DollarSign}
+//             color="green"
+//           />
+//           <MetricCard
+//             title="Active Admins"
+//             value={totalAdmins.toLocaleString()}
+//             icon={Users}
+//             color="blue"
+//           />
+//           <MetricCard
+//             title="Credits in Circulation"
+//             value={totalCreditBalance.toLocaleString()}
+//             icon={CreditCard}
+//             color="purple"
+//           />
+//           <MetricCard
+//             title="Success Rate"
+//             value={`${successRate.toFixed(1)}%`}
+//             icon={Activity}
+//             color="indigo"
+//           />
+//         </div>
+
+//         {/* Charts Grid */}
+//         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+//           {/* Revenue Trend */}
+//           <div className="bg-white rounded-lg shadow-sm border p-6">
+//             <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue & Usage Trends</h3>
+//             <ResponsiveContainer width="100%" height={300}>
+//               <ComposedChart data={timeSeriesData}>
+//                 <CartesianGrid strokeDasharray="3 3" />
+//                 <XAxis dataKey="name" />
+//                 <YAxis yAxisId="left" />
+//                 <YAxis yAxisId="right" orientation="right" />
+//                 <Tooltip />
+//                 <Legend />
+//                 <Area yAxisId="left" type="monotone" dataKey="revenue" stackId="1" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} name="Revenue ($)" />
+//                 <Line yAxisId="right" type="monotone" dataKey="credits" stroke="#10B981" strokeWidth={2} name="Credits Used" />
+//               </ComposedChart>
+//             </ResponsiveContainer>
+//           </div>
+
+//           {/* Transaction Status Distribution */}
+//           <div className="bg-white rounded-lg shadow-sm border p-6">
+//             <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Status Distribution</h3>
+//             <ResponsiveContainer width="100%" height={300}>
+//               <PieChart>
+//                 <Pie
+//                   data={statusDistribution}
+//                   cx="50%"
+//                   cy="50%"
+//                   labelLine={false}
+//                   label={({ name, percentage }) => `${name} (${percentage}%)`}
+//                   outerRadius={80}
+//                   fill="#8884d8"
+//                   dataKey="value"
+//                 >
+//                   {statusDistribution.map((entry, index) => (
+//                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+//                   ))}
+//                 </Pie>
+//                 <Tooltip />
+//               </PieChart>
+//             </ResponsiveContainer>
+//           </div>
+
+//           {/* Location Performance */}
+//           <div className="bg-white rounded-lg shadow-sm border p-6">
+//             <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance by Location</h3>
+//             <ResponsiveContainer width="100%" height={300}>
+//               <BarChart data={locationData}>
+//                 <CartesianGrid strokeDasharray="3 3" />
+//                 <XAxis dataKey="location" />
+//                 <YAxis />
+//                 <Tooltip />
+//                 <Legend />
+//                 <Bar dataKey="revenue" fill="#3B82F6" name="Revenue ($)" />
+//                 <Bar dataKey="admins" fill="#10B981" name="Admin Count" />
+//               </BarChart>
+//             </ResponsiveContainer>
+//           </div>
+
+//           {/* Transaction Volume */}
+//           <div className="bg-white rounded-lg shadow-sm border p-6">
+//             <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Volume</h3>
+//             <ResponsiveContainer width="100%" height={300}>
+//               <AreaChart data={timeSeriesData}>
+//                 <CartesianGrid strokeDasharray="3 3" />
+//                 <XAxis dataKey="name" />
+//                 <YAxis />
+//                 <Tooltip />
+//                 <Legend />
+//                 <Area type="monotone" dataKey="transactions" stackId="1" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.6} name="Total Transactions" />
+//                 <Area type="monotone" dataKey="newAdmins" stackId="1" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.6} name="New Admins" />
+//               </AreaChart>
+//             </ResponsiveContainer>
+//           </div>
+//         </div>
+
+//         {/* Admin Performance Table */}
+//         <div className="bg-white rounded-lg shadow-sm border">
+//           <div className="px-6 py-4 border-b border-gray-200">
+//             <h3 className="text-lg font-semibold text-gray-900">Top Performing Admins</h3>
+//           </div>
+//           <div className="overflow-x-auto">
+//             <table className="min-w-full divide-y divide-gray-200">
+//               <thead className="bg-gray-50">
+//                 <tr>
+//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
+//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
+//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credits Used</th>
+//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit Balance</th>
+//                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transactions</th>
+//                 </tr>
+//               </thead>
+//               <tbody className="bg-white divide-y divide-gray-200">
+//                 {adminPerformance.slice(0, 10).map((admin, index) => (
+//                   <tr key={admin.email} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+//                     <td className="px-6 py-4 whitespace-nowrap">
+//                       <div>
+//                         <div className="text-sm font-medium text-gray-900">{admin.name}</div>
+//                         <div className="text-sm text-gray-500">{admin.email}</div>
+//                       </div>
+//                     </td>
+//                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{admin.location}</td>
+//                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${admin.revenue.toFixed(2)}</td>
+//                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{admin.creditsUsed.toLocaleString()}</td>
+//                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{admin.creditBalance.toLocaleString()}</td>
+//                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{admin.transactionCount}</td>
+//                   </tr>
+//                 ))}
+//               </tbody>
+//             </table>
+//           </div>
+//         </div>
+
+//         {/* Additional Metrics */}
+//         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+//           <div className="bg-white rounded-lg shadow-sm border p-6">
+//             <h4 className="text-sm font-medium text-gray-600 mb-2">Average Credit Balance</h4>
+//             <p className="text-2xl font-bold text-blue-600">{avgCreditBalance.toFixed(0)}</p>
+//             <p className="text-sm text-gray-500 mt-1">Per admin</p>
+//           </div>
+//           <div className="bg-white rounded-lg shadow-sm border p-6">
+//             <h4 className="text-sm font-medium text-gray-600 mb-2">Total Refunds</h4>
+//             <p className="text-2xl font-bold text-red-600">${totalRefunds.toFixed(2)}</p>
+//             {totalRevenue > 0 ?
+
+//               <p className="text-sm text-gray-500 mt-1">{((totalRefunds / totalRevenue) * 100).toFixed(1)}% of revenue</p>
+//               : (
+//                 <p className="text-sm text-gray-500 mt-1">--% of total</p>
+//               )}
+//           </div>
+//           <div className="bg-white rounded-lg shadow-sm border p-6">
+//             <h4 className="text-sm font-medium text-gray-600 mb-2">Failed Transactions</h4>
+//             <p className="text-2xl font-bold text-orange-600">{failedTransactions}</p>
+//             {transactions.length > 0 ? (
+//               <p className="text-sm text-gray-500 mt-1">
+//                 {((failedTransactions / transactions.length) * 100).toFixed(1)}% of total
+//               </p>
+//             ) : (
+//               <p className="text-sm text-gray-500 mt-1">--% of total</p>
+//             )}
+//           </div>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default AnalyticsDashboard;
+
+
 'use client';
-
 import React, { useState, useEffect } from 'react';
-import { 
-  LineChart, Line, BarChart, Bar, PieChart, Pie, XAxis, YAxis, 
-  CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell 
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell, AreaChart, Area, ComposedChart, ScatterChart, Scatter
 } from 'recharts';
-import jsPDF from 'jspdf';
+import { TrendingUp, TrendingDown, Users, CreditCard, DollarSign, Activity, AlertCircle, Calendar } from 'lucide-react';
 
-// Define interfaces for data structures
-interface DataPoint {
-  month?: string;
-  week?: string;
-  quarter?: string;
-  year: number | string;
-  fullDate: Date;
-  dateStr: string;
-  revenue?: number;
-  users?: number;
-  rate?: number;
-}
-
-interface PlanDistributionData {
+interface AdminData {
+  id: string;
   name: string;
-  value: number;
-  color: string;
+  email: string;
+  centreName: string;
+  location: string;
+  creditBalance: number;
+  createdAt: string;
 }
 
-interface RevenueByPlanData {
-  plan: string;
-  revenue: number;
+interface TransactionData {
+  _id: string;
+  userId: string;
+  type: string;
+  status: string;
+  amount: number;
+  credits: number;
+  description: string;
+  createdAt: string;
 }
 
-interface FeatureUsageData {
-  feature: string;
-  usage: number;
-}
-
-interface DashboardData {
-  weekly: {
-    revenueData: DataPoint[];
-    userGrowthData: DataPoint[];
-    churnRateData: DataPoint[];
-  };
-  monthly: {
-    revenueData: DataPoint[];
-    userGrowthData: DataPoint[];
-    churnRateData: DataPoint[];
-  };
-  quarterly: {
-    revenueData: DataPoint[];
-    userGrowthData: DataPoint[];
-    churnRateData: DataPoint[];
-  };
-  yearly: {
-    revenueData: DataPoint[];
-    userGrowthData: DataPoint[];
-    churnRateData: DataPoint[];
-  };
-  planDistributionData: PlanDistributionData[];
-  revenueByPlanData: RevenueByPlanData[];
-  featureUsageData: FeatureUsageData[];
-}
-
-const generateMockData = (): DashboardData => {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const currentYear = new Date().getFullYear();
-  const lastYear = currentYear - 1;
-  const twoYearsAgo = currentYear - 2;
-
-  let baseRevenue = 8000;
-  let baseUsers = 150;
-  let baseChurnRate = 3.5;
-
-  const revenueData: DataPoint[] = [];
-  const userGrowthData: DataPoint[] = [];
-  const churnRateData: DataPoint[] = [];
-
-  for (let year = twoYearsAgo; year <= currentYear; year++) {
-    for (let m = 0; m < 12; m++) {
-      if (year === currentYear && m > new Date().getMonth()) {
-        continue;
-      }
-
-      const dateStr = `${months[m]} ${year}`;
-      const fullDate = new Date(year, m, 15);
-
-      const seasonalFactor = 1 + Math.sin(m / 11 * Math.PI) * 0.1;
-      const growthFactor = 1 + (year - twoYearsAgo + m / 12) * 0.1;
-      const randomFactor = 0.9 + Math.random() * 0.2;
-
-      const revenue = Math.round(baseRevenue * seasonalFactor * growthFactor * randomFactor);
-      const users = Math.round(baseUsers * growthFactor * (0.95 + Math.random() * 0.1));
-      const churnRate = Math.max(0.8, baseChurnRate * (1 - (year - twoYearsAgo + m / 12) * 0.15) * (0.9 + Math.random() * 0.2));
-
-      revenueData.push({ 
-        month: months[m], 
-        year, 
-        fullDate,
-        dateStr,
-        revenue 
-      });
-
-      userGrowthData.push({ 
-        month: months[m], 
-        year, 
-        fullDate,
-        dateStr,
-        users 
-      });
-
-      churnRateData.push({ 
-        month: months[m], 
-        year, 
-        fullDate,
-        dateStr,
-        rate: parseFloat(churnRate.toFixed(1)) 
-      });
-
-      baseRevenue = revenue;
-      baseUsers = users;
-      baseChurnRate = churnRate;
-    }
-  }
-
-  const weeklyRevenueData: DataPoint[] = [];
-  const weeklyUserGrowthData: DataPoint[] = [];
-  const weeklyChurnRateData: DataPoint[] = [];
-
-  const today = new Date();
-  const lastRevenue = revenueData[revenueData.length - 1].revenue ?? 0;
-  const lastUsers = userGrowthData[userGrowthData.length - 1].users ?? 0;
-  const lastChurn = churnRateData[churnRateData.length - 1].rate ?? 0;
-
-  for (let i = 11; i >= 0; i--) {
-    const weekDate = new Date(today);
-    weekDate.setDate(today.getDate() - (i * 7));
-    const weekStr = `Week ${12-i}`;
-    const year = weekDate.getFullYear();
-
-    const weekVariance = 0.95 + Math.random() * 0.1;
-
-    weeklyRevenueData.push({
-      week: weekStr,
-      year,
-      fullDate: new Date(weekDate),
-      dateStr: `${weekDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
-      revenue: Math.round(lastRevenue / 4 * weekVariance)
-    });
-
-    weeklyUserGrowthData.push({
-      week: weekStr,
-      year,
-      fullDate: new Date(weekDate),
-      dateStr: `${weekDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
-      users: Math.round(lastUsers + (Math.random() * 10 - 5))
-    });
-
-    weeklyChurnRateData.push({
-      week: weekStr,
-      year,
-      fullDate: new Date(weekDate),
-      dateStr: `${weekDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
-      rate: parseFloat((lastChurn * (0.9 + Math.random() * 0.2)).toFixed(1))
-    });
-  }
-
-  const quarterlyRevenueData: DataPoint[] = [];
-  const quarterlyUserGrowthData: DataPoint[] = [];
-  const quarterlyChurnRateData: DataPoint[] = [];
-
-  for (let year = twoYearsAgo; year <= currentYear; year++) {
-    for (let q = 0; q < 4; q++) {
-      if (year === currentYear && q > Math.floor(new Date().getMonth() / 3)) {
-        continue;
-      }
-
-      const quarterStr = `Q${q+1} ${year}`;
-      const monthIndices = [q*3, q*3+1, q*3+2];
-
-      const quarterRevenue = revenueData.filter(item => 
-        item.year === year && monthIndices.includes(months.indexOf(item.month ?? ''))
-      );
-
-      const quarterUsers = userGrowthData.filter(item => 
-        item.year === year && monthIndices.includes(months.indexOf(item.month ?? ''))
-      );
-
-      const quarterChurn = churnRateData.filter(item => 
-        item.year === year && monthIndices.includes(months.indexOf(item.month ?? ''))
-      );
-
-      if (quarterRevenue.length > 0) {
-        const totalQuarterRevenue = quarterRevenue.reduce((sum, item) => sum + (item.revenue ?? 0), 0);
-        const lastMonthUsers = quarterUsers[quarterUsers.length - 1]?.users ?? 0;
-        const avgChurnRate = quarterChurn.length > 0 ? quarterChurn.reduce((sum, item) => sum + (item.rate ?? 0), 0) / quarterChurn.length : 0;
-
-        quarterlyRevenueData.push({
-          quarter: quarterStr,
-          year,
-          fullDate: new Date(year, q*3+2, 15),
-          dateStr: quarterStr,
-          revenue: totalQuarterRevenue
-        });
-
-        quarterlyUserGrowthData.push({
-          quarter: quarterStr,
-          year,
-          fullDate: new Date(year, q*3+2, 15),
-          dateStr: quarterStr,
-          users: lastMonthUsers
-        });
-
-        quarterlyChurnRateData.push({
-          quarter: quarterStr,
-          year,
-          fullDate: new Date(year, q*3+2, 15),
-          dateStr: quarterStr,
-          rate: parseFloat(avgChurnRate.toFixed(1))
-        });
-      }
-    }
-  }
-
-  const yearlyRevenueData: DataPoint[] = [];
-  const yearlyUserGrowthData: DataPoint[] = [];
-  const yearlyChurnRateData: DataPoint[] = [];
-
-  for (let year = twoYearsAgo; year <= currentYear; year++) {
-    if (year > currentYear) continue;
-
-    const yearRevenue = revenueData.filter(item => 
-      item.year === year && (year !== currentYear || new Date(item.fullDate) <= new Date())
-    );
-
-    const yearUsers = userGrowthData.filter(item => 
-      item.year === year && (year !== currentYear || new Date(item.fullDate) <= new Date())
-    );
-
-    const yearChurn = churnRateData.filter(item => 
-      item.year === year && (year !== currentYear || new Date(item.fullDate) <= new Date())
-    );
-
-    if (yearRevenue.length > 0) {
-      const totalYearRevenue = yearRevenue.reduce((sum, item) => sum + (item.revenue ?? 0), 0);
-      const lastMonthUsers = yearUsers[yearUsers.length - 1]?.users ?? 0;
-      const avgChurnRate = yearChurn.length > 0 ? yearChurn.reduce((sum, item) => sum + (item.rate ?? 0), 0) / yearChurn.length : 0;
-
-      yearlyRevenueData.push({
-        year: year.toString(),
-        fullDate: new Date(year, 11, 31),
-        dateStr: year.toString(),
-        revenue: totalYearRevenue
-      });
-
-      yearlyUserGrowthData.push({
-        year: year.toString(),
-        fullDate: new Date(year, 11, 31),
-        dateStr: year.toString(),
-        users: lastMonthUsers
-      });
-
-      yearlyChurnRateData.push({
-        year: year.toString(),
-        fullDate: new Date(year, 11, 31),
-        dateStr: year.toString(),
-        rate: parseFloat(avgChurnRate.toFixed(1))
-      });
-    }
-  }
-
-  const planDistributionData: PlanDistributionData[] = [
-    { name: 'Basic', value: 35, color: '#8884d8' },
-    { name: 'Pro', value: 45, color: '#82ca9d' },
-    { name: 'Enterprise', value: 20, color: '#ffc658' },
-  ];
-
-  const revenueByPlanData: RevenueByPlanData[] = [
-    { plan: 'Basic', revenue: Math.round((revenueData[revenueData.length - 1].revenue ?? 0) * 0.25) },
-    { plan: 'Pro', revenue: Math.round((revenueData[revenueData.length - 1].revenue ?? 0) * 0.45) },
-    { plan: 'Enterprise', revenue: Math.round((revenueData[revenueData.length - 1].revenue ?? 0) * 0.3) },
-  ];
-
-  const featureUsageData: FeatureUsageData[] = [
-    { feature: 'Analytics', usage: 87 },
-    { feature: 'Reporting', usage: 63 },
-    { feature: 'User Mgmt', usage: 92 },
-    { feature: 'Billing', usage: 45 },
-    { feature: 'Integration', usage: 71 },
-  ];
-
-  return {
-    weekly: {
-      revenueData: weeklyRevenueData,
-      userGrowthData: weeklyUserGrowthData,
-      churnRateData: weeklyChurnRateData,
-    },
-    monthly: {
-      revenueData: revenueData,
-      userGrowthData: userGrowthData,
-      churnRateData: churnRateData,
-    },
-    quarterly: {
-      revenueData: quarterlyRevenueData,
-      userGrowthData: quarterlyUserGrowthData,
-      churnRateData: quarterlyChurnRateData,
-    },
-    yearly: {
-      revenueData: yearlyRevenueData,
-      userGrowthData: yearlyUserGrowthData,
-      churnRateData: yearlyChurnRateData,
-    },
-    planDistributionData,
-    revenueByPlanData,
-    featureUsageData
-  };
-};
-
-const SaasProviderDashboard: React.FC = () => {
-  const [dateRange, setDateRange] = useState<'weekly' | 'monthly' | 'quarterly' | 'yearly'>('monthly');
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [exportLoading, setExportLoading] = useState<boolean>(false);
+const AnalyticsDashboard = () => {
+  const [admins, setAdmins] = useState<AdminData[]>([]);
+  const [transactions, setTransactions] = useState<TransactionData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState('monthly');
+  const [selectedMetric, setSelectedMetric] = useState('revenue');
 
   useEffect(() => {
-    const loadData = setTimeout(() => {
-      const data = generateMockData();
-      setDashboardData(data);
-      setIsLoading(false);
-    }, 1000);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-    return () => clearTimeout(loadData);
-  }, []);
+        const [adminsRes, transactionsRes] = await Promise.all([
+          fetch('/api/admins'),
+          fetch('/api/transactions?limit=1000') // Fetch more data for analytics
+        ]);
 
-  const getCurrentData = () => {
-    if (!dashboardData) return { revenueData: [], userGrowthData: [], churnRateData: [] };
-    return dashboardData[dateRange];
-  };
-
-  const handleExportReport = () => {
-    setExportLoading(true);
-
-    setTimeout(() => {
-      const currentData = getCurrentData();
-      const date = new Date().toLocaleDateString('en-US');
-      const doc = new jsPDF();
-
-      // Title
-      doc.setFontSize(18);
-      doc.text('SaaS Provider Dashboard Report', 20, 20);
-      
-      // Date and Range
-      doc.setFontSize(12);
-      doc.text(`Generated on: ${date}`, 20, 30);
-      doc.text(`Date Range: ${dateRange.charAt(0).toUpperCase() + dateRange.slice(1)}`, 20, 40);
-
-      // Revenue Section
-      doc.setFontSize(14);
-      doc.text('Revenue Data', 20, 50);
-      doc.setFontSize(10);
-      doc.text('Date', 20, 60);
-      doc.text('Revenue ($)', 100, 60);
-      doc.line(20, 62, 180, 62);
-
-      let yPos = 70;
-      currentData.revenueData.forEach((item, index) => {
-        doc.text(item.dateStr, 20, yPos);
-        doc.text(`$${Number(item.revenue ?? 0).toLocaleString()}`, 100, yPos);
-        yPos += 10;
-        if (yPos > 270 && index < currentData.revenueData.length - 1) {
-          doc.addPage();
-          yPos = 20;
+        if (!adminsRes.ok) {
+          throw new Error(`Failed to fetch admins: ${adminsRes.status}`);
         }
-      });
-
-      // New page for User Growth
-      doc.addPage();
-      doc.setFontSize(14);
-      doc.text('User Growth Data', 20, 20);
-      doc.setFontSize(10);
-      doc.text('Date', 20, 30);
-      doc.text('Users', 100, 30);
-      doc.line(20, 32, 180, 32);
-
-      yPos = 40;
-      currentData.userGrowthData.forEach((item, index) => {
-        doc.text(item.dateStr, 20, yPos);
-        doc.text(Number(item.users ?? 0).toLocaleString(), 100, yPos);
-        yPos += 10;
-        if (yPos > 270 && index < currentData.userGrowthData.length - 1) {
-          doc.addPage();
-          yPos = 20;
+        if (!transactionsRes.ok) {
+          throw new Error(`Failed to fetch transactions: ${transactionsRes.status}`);
         }
-      });
 
-      // New page for Churn Rate
-      doc.addPage();
-      doc.setFontSize(14);
-      doc.text('Churn Rate Data', 20, 20);
-      doc.setFontSize(10);
-      doc.text('Date', 20, 30);
-      doc.text('Rate (%)', 100, 30);
-      doc.line(20, 32, 180, 32);
+        const adminsData = await adminsRes.json();
+        const transactionsData = await transactionsRes.json();
 
-      yPos = 40;
-      currentData.churnRateData.forEach((item, index) => {
-        doc.text(item.dateStr, 20, yPos);
-        doc.text(`${Number(item.rate ?? 0).toFixed(1)}%`, 100, yPos);
-        yPos += 10;
-        if (yPos > 270 && index < currentData.churnRateData.length - 1) {
-          doc.addPage();
-          yPos = 20;
+        console.log("Fetched Data - Admins:", adminsData?.length || 0, "Transactions:", transactionsData?.transactions?.length || 0);
+
+        // Handle different response structures
+        const adminsList = Array.isArray(adminsData) ? adminsData : (adminsData?.admins || []);
+        const transactionsList = Array.isArray(transactionsData) ? transactionsData : (transactionsData?.transactions || []);
+
+        setAdmins(adminsList);
+        setTransactions(transactionsList);
+
+        if (transactionsList.length === 0) {
+          console.warn("No transactions found. Check API permissions and data.");
         }
-      });
 
-      // Key Metrics
-      const totalRevenue = currentData.revenueData.reduce((sum, item) => sum + (item.revenue ?? 0), 0);
-      const currentPeriodRevenue = currentData.revenueData[currentData.revenueData.length - 1]?.revenue ?? 0;
-      const totalUsers = currentData.userGrowthData[currentData.userGrowthData.length - 1]?.users ?? 0;
-      const currentChurnRate = currentData.churnRateData[currentData.churnRateData.length - 1]?.rate ?? 0;
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError(error instanceof Error ? error.message : 'Failed to fetch data');
+        setAdmins([]);
+        setTransactions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      doc.addPage();
-      doc.setFontSize(14);
-      doc.text('Key Metrics', 20, 20);
-      doc.setFontSize(10);
-      doc.text(`Total Revenue: $${totalRevenue.toLocaleString()}`, 20, 30);
-      doc.text(`Current Period Revenue: $${currentPeriodRevenue.toLocaleString()}`, 20, 40);
-      doc.text(`Total Users: ${totalUsers.toLocaleString()}`, 20, 50);
-      doc.text(`Current Churn Rate: ${currentChurnRate.toFixed(1)}%`, 20, 60);
+    fetchData();
+  }, []); // Fixed: Added empty dependency array to prevent infinite loop
 
-      // Save the PDF
-      doc.save(`saas_dashboard_report_${dateRange}_${date.replace(/\//g, '-')}.pdf`);
-      setExportLoading(false);
-    }, 1500);
-  };
-
-  if (isLoading || !dashboardData) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl font-semibold">Loading dashboard data...</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading analytics...</p>
+        </div>
       </div>
     );
   }
 
-  const currentData = getCurrentData();
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 mb-2">Error loading data</p>
+          <p className="text-gray-600 text-sm">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-  const getXAxisKey = () => {
-    switch(dateRange) {
-      case 'weekly': return 'week';
-      case 'quarterly': return 'quarter';
-      case 'yearly': return 'year';
-      default: return 'month';
+  // Core Metrics Calculations
+  const totalAdmins = admins.length;
+  const totalCreditBalance = admins.reduce((sum, a) => sum + (a.creditBalance || 0), 0);
+  const avgCreditBalance = totalAdmins ? totalCreditBalance / totalAdmins : 0;
+
+  const completedTransactions = transactions.filter(t => t.status === 'completed');
+  const totalRevenue = completedTransactions
+    .filter(t => t.type === 'credit_purchase')
+    .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+  const totalCreditsUsed = transactions
+    .filter(t => t.type === 'credit_usage')
+    .reduce((sum, t) => sum + (t.credits || 0), 0);
+
+  const totalRefunds = transactions
+    .filter(t => t.type === 'refund')
+    .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+  const failedTransactions = transactions.filter(t => t.status === 'failed').length;
+  const successRate = transactions.length ? ((completedTransactions.length / transactions.length) * 100) : 0;
+
+  // Time-based Data Processing
+  const getTimeSeriesData = () => {
+    const grouped: Record<string, {
+      revenue: number;
+      credits: number;
+      transactions: number;
+      refunds: number;
+      newAdmins: number;
+    }> = {};
+
+    transactions.forEach(t => {
+      const date = new Date(t.createdAt);
+      let key = formatDateKey(date);
+
+      if (!grouped[key]) {
+        grouped[key] = { revenue: 0, credits: 0, transactions: 0, refunds: 0, newAdmins: 0 };
+      }
+
+      grouped[key].transactions++;
+
+      if (t.type === 'credit_purchase' && t.status === 'completed') {
+        grouped[key].revenue += t.amount || 0;
+      }
+      if (t.type === 'credit_usage') {
+        grouped[key].credits += t.credits || 0;
+      }
+      if (t.type === 'refund') {
+        grouped[key].refunds += t.amount || 0;
+      }
+    });
+
+    // Add new admin registrations
+    admins.forEach(admin => {
+      const date = new Date(admin.createdAt);
+      let key = formatDateKey(date);
+
+      if (!grouped[key]) {
+        grouped[key] = { revenue: 0, credits: 0, transactions: 0, refunds: 0, newAdmins: 0 };
+      }
+      grouped[key].newAdmins++;
+    });
+
+    return Object.entries(grouped)
+      .map(([name, values]) => ({ name, ...values }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  const formatDateKey = (date: Date): string => {
+    switch (dateRange) {
+      case 'daily':
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      case 'weekly':
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        return `${weekStart.getFullYear()}-W${String(Math.ceil(weekStart.getDate() / 7)).padStart(2, '0')}`;
+      case 'monthly':
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      default:
+        return date.toISOString().split('T')[0];
     }
   };
 
-  const revenueData = currentData.revenueData;
-  const userGrowthData = currentData.userGrowthData;
-  const churnRateData = currentData.churnRateData;
+  // Location-based Analytics
+  const getLocationData = () => {
+    const locationStats: Record<string, {
+      admins: number;
+      totalCredits: number;
+      revenue: number;
+    }> = {};
 
-  const totalRevenue = revenueData.reduce((sum, item) => sum + (item.revenue ?? 0), 0);
-  const currentPeriodRevenue = revenueData[revenueData.length - 1]?.revenue ?? 0;
-  const previousPeriodRevenue = revenueData[revenueData.length - 2]?.revenue ?? 0;
-  const revenueGrowth = previousPeriodRevenue ? ((currentPeriodRevenue - previousPeriodRevenue) / previousPeriodRevenue) * 100 : 0;
+    admins.forEach(admin => {
+      const location = admin.location || 'Unknown';
+      if (!locationStats[location]) {
+        locationStats[location] = { admins: 0, totalCredits: 0, revenue: 0 };
+      }
+      locationStats[location].admins++;
+      locationStats[location].totalCredits += admin.creditBalance || 0;
+    });
 
-  const totalUsers = userGrowthData[userGrowthData.length - 1]?.users ?? 0;
-  const previousUsers = userGrowthData[userGrowthData.length - 2]?.users ?? 0;
-  const newUsers = totalUsers - previousUsers;
+    transactions.forEach(t => {
+      const admin = admins.find(a => a.id === t.userId);
+      const location = admin?.location || 'Unknown';
 
-  const averageRevenuePerUser = totalUsers ? totalRevenue / totalUsers : 0;
-  const currentChurnRate = churnRateData[churnRateData.length - 1]?.rate ?? 0;
-  const previousChurnRate = churnRateData[churnRateData.length - 2]?.rate ?? 0;
+      if (!locationStats[location]) {
+        locationStats[location] = { admins: 0, totalCredits: 0, revenue: 0 };
+      }
 
-  const newSubscriptionsRevenue = Math.round(currentPeriodRevenue * 0.2);
-  const customerLifetimeValue = averageRevenuePerUser * (1 / (currentChurnRate / 100)) || 0;
+      if (t.type === 'credit_purchase' && t.status === 'completed') {
+        locationStats[location].revenue += t.amount || 0;
+      }
+    });
+
+    return Object.entries(locationStats).map(([location, stats]) => ({
+      location,
+      ...stats
+    }));
+  };
+
+  // Transaction Status Distribution
+  const getStatusDistribution = () => {
+    if (transactions.length === 0) return [];
+    
+    const statusCounts: Record<string, number> = {};
+    transactions.forEach(t => {
+      statusCounts[t.status] = (statusCounts[t.status] || 0) + 1;
+    });
+
+    return Object.entries(statusCounts).map(([status, count]) => ({
+      name: status.charAt(0).toUpperCase() + status.slice(1),
+      value: count,
+      percentage: ((count / transactions.length) * 100).toFixed(1)
+    }));
+  };
+
+  // Admin Performance Metrics
+  const getAdminPerformance = () => {
+    return admins.map(admin => {
+      const adminTransactions = transactions.filter(t => t.userId === admin.id);
+      const revenue = adminTransactions
+        .filter(t => t.type === 'credit_purchase' && t.status === 'completed')
+        .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+      const creditsUsed = adminTransactions
+        .filter(t => t.type === 'credit_usage')
+        .reduce((sum, t) => sum + (t.credits || 0), 0);
+
+      return {
+        name: admin.name,
+        email: admin.email,
+        location: admin.location || 'Unknown',
+        creditBalance: admin.creditBalance || 0,
+        revenue,
+        creditsUsed,
+        transactionCount: adminTransactions.length,
+        avgTransactionValue: adminTransactions.length ? revenue / adminTransactions.length : 0
+      };
+    }).sort((a, b) => b.revenue - a.revenue);
+  };
+
+  const timeSeriesData = getTimeSeriesData();
+  const locationData = getLocationData();
+  const statusDistribution = getStatusDistribution();
+  const adminPerformance = getAdminPerformance();
+
+  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+
+  const MetricCard = ({ title, value, icon: Icon, trend, color = 'blue' }: any) => (
+    <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <p className={`text-2xl font-bold text-${color}-600`}>{value}</p>
+        </div>
+        <div className={`p-3 bg-${color}-100 rounded-full`}>
+          <Icon className={`h-6 w-6 text-${color}-600`} />
+        </div>
+      </div>
+      {trend && (
+        <div className="mt-4 flex items-center">
+          {trend.isPositive ? (
+            <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+          ) : (
+            <TrendingDown className="h-4 w-4 text-red-500 mr-1" />
+          )}
+          <span className={`text-sm ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+            {trend.value}% vs last period
+          </span>
+        </div>
+      )}
+    </div>
+  );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">SaaS Provider Dashboard</h1>
-        <p className="text-gray-600">Overview of platform revenue and growth metrics</p>
-      </div>
-
-      <div className="mb-6 flex justify-between items-center">
-        <div className="inline-flex rounded-md shadow-sm" role="group">
-          <button 
-            type="button" 
-            className={`px-4 py-2 text-sm font-medium border rounded-l-lg ${dateRange === 'weekly' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}
-            onClick={() => setDateRange('weekly')}
-          >
-            Weekly
-          </button>
-          <button 
-            type="button" 
-            className={`px-4 py-2 text-sm font-medium border border-l-0 ${dateRange === 'monthly' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}
-            onClick={() => setDateRange('monthly')}
-          >
-            Monthly
-          </button>
-          <button 
-            type="button" 
-            className={`px-4 py-2 text-sm font-medium border border-l-0 ${dateRange === 'quarterly' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}
-            onClick={() => setDateRange('quarterly')}
-          >
-            Quarterly
-          </button>
-          <button 
-            type="button" 
-            className={`px-4 py-2 text-sm font-medium border border-l-0 rounded-r-lg ${dateRange === 'yearly' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700'}`}
-            onClick={() => setDateRange('yearly')}
-          >
-            Yearly
-          </button>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
+          <p className="text-gray-600 mt-2">Comprehensive insights into your platform performance</p>
+          {transactions.length === 0 && (
+            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+              <div className="flex">
+                <AlertCircle className="h-5 w-5 text-yellow-400" />
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">
+                    No transaction data found. This could be due to:
+                  </p>
+                  <ul className="mt-1 text-sm text-yellow-600 list-disc list-inside">
+                    <li>No transactions have been created yet</li>
+                    <li>API permission issues</li>
+                    <li>Database connection problems</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div>
-          <button 
-            className={`px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 flex items-center justify-center ${exportLoading ? 'opacity-75 cursor-wait' : ''}`}
-            onClick={handleExportReport}
-            disabled={exportLoading}
-          >
-            {exportLoading ? 'Generating...' : 'Export PDF Report'}
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-gray-500 text-sm font-medium mb-1">Total Revenue</h3>
-          <div className="flex items-end">
-            <span className="text-2xl font-bold text-gray-800">${totalRevenue.toLocaleString()}</span>
-          </div>
-          <div className="mt-2">
-            <span className={`text-sm ${revenueGrowth >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              {revenueGrowth >= 0 ? '↑' : '↓'} {Math.abs(revenueGrowth).toFixed(1)}% from previous period
-            </span>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-gray-500 text-sm font-medium mb-1">Current Period Revenue</h3>
-          <div className="flex items-end">
-            <span className="text-2xl font-bold text-gray-800">${currentPeriodRevenue.toLocaleString()}</span>
-          </div>
-          <div className="mt-2">
-            <span className="text-sm text-gray-500">vs ${previousPeriodRevenue.toLocaleString()} last period</span>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-gray-500 text-sm font-medium mb-1">Total Users</h3>
-          <div className="flex items-end">
-            <span className="text-2xl font-bold text-gray-800">{totalUsers.toLocaleString()}</span>
-          </div>
-          <div className="mt-2">
-            <span className="text-sm text-green-500">+{newUsers} new users this period</span>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-gray-500 text-sm font-medium mb-1">Current Churn Rate</h3>
-          <div className="flex items-end">
-            <span className="text-2xl font-bold text-gray-800">{currentChurnRate}%</span>
-          </div>
-          <div className="mt-2">
-            <span className={`text-sm ${currentChurnRate <= previousChurnRate ? 'text-green-500' : 'text-red-500'}`}>
-              {currentChurnRate <= previousChurnRate ? '↓' : '↑'} 
-              {Math.abs(currentChurnRate - previousChurnRate).toFixed(1)}% from last period
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-gray-500 text-sm font-medium mb-1">Average Revenue Per User</h3>
-          <div className="flex items-end">
-            <span className="text-2xl font-bold text-gray-800">${averageRevenuePerUser.toFixed(2)}</span>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-gray-500 text-sm font-medium mb-1">New Subscriptions Revenue</h3>
-          <div className="flex items-end">
-            <span className="text-2xl font-bold text-gray-800">${newSubscriptionsRevenue.toLocaleString()}</span>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-gray-500 text-sm font-medium mb-1">Customer Lifetime Value</h3>
-          <div className="flex items-end">
-            <span className="text-2xl font-bold text-gray-800">${customerLifetimeValue.toFixed(2)}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-gray-700 font-semibold mb-4">Revenue Trend</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={revenueData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+        {/* Time Range Selector */}
+        <div className="mb-6">
+          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
+            {['daily', 'weekly', 'monthly'].map((range) => (
+              <button
+                key={range}
+                onClick={() => setDateRange(range)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${dateRange === range
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+                }`}
               >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey={getXAxisKey()} />
-                <YAxis />
-                <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
-                <Legend />
-                <Line type="monotone" dataKey="revenue" stroke="#3B82F6" activeDot={{ r: 8 }} />
-              </LineChart>
-            </ResponsiveContainer>
+                {range.charAt(0).toUpperCase() + range.slice(1)}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-gray-700 font-semibold mb-4">User Growth</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={userGrowthData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey={getXAxisKey()} />
-                <YAxis />
-                <Tooltip formatter={(value: number) => value.toLocaleString()} />
-                <Legend />
-                <Line type="monotone" dataKey="users" stroke="#10B981" activeDot={{ r: 8 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-gray-700 font-semibold mb-4">Churn Rate Trend</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={churnRateData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey={getXAxisKey()} />
-                <YAxis domain={[0, 'dataMax + 1']} />
-                <Tooltip formatter={(value: number) => `${value}%`} />
-                <Legend />
-                <Line type="monotone" dataKey="rate" stroke="#EF4444" activeDot={{ r: 8 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+        {/* Key Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <MetricCard
+            title="Total Revenue"
+            value={`$${totalRevenue.toLocaleString()}`}
+            icon={DollarSign}
+            color="green"
+          />
+          <MetricCard
+            title="Active Admins"
+            value={totalAdmins.toLocaleString()}
+            icon={Users}
+            color="blue"
+          />
+          <MetricCard
+            title="Credits in Circulation"
+            value={totalCreditBalance.toLocaleString()}
+            icon={CreditCard}
+            color="purple"
+          />
+          <MetricCard
+            title="Success Rate"
+            value={`${successRate.toFixed(1)}%`}
+            icon={Activity}
+            color="indigo"
+          />
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-gray-700 font-semibold mb-4">Revenue by Plan</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={dashboardData.revenueByPlanData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="plan" />
-                <YAxis />
-                <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
-                <Legend />
-                <Bar dataKey="revenue" fill="#3B82F6" />
-              </BarChart>
-            </ResponsiveContainer>
+        {/* Charts Grid - Only show if we have data */}
+        {transactions.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            {/* Revenue Trend */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue & Usage Trends</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={timeSeriesData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis yAxisId="left" />
+                  <YAxis yAxisId="right" orientation="right" />
+                  <Tooltip />
+                  <Legend />
+                  <Area yAxisId="left" type="monotone" dataKey="revenue" stackId="1" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.6} name="Revenue ($)" />
+                  <Line yAxisId="right" type="monotone" dataKey="credits" stroke="#10B981" strokeWidth={2} name="Credits Used" />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Transaction Status Distribution */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Status Distribution</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={statusDistribution}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percentage }) => `${name} (${percentage}%)`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {statusDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Location Performance */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance by Location</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={locationData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="location" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="revenue" fill="#3B82F6" name="Revenue ($)" />
+                  <Bar dataKey="admins" fill="#10B981" name="Admin Count" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Transaction Volume */}
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Volume</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart data={timeSeriesData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Area type="monotone" dataKey="transactions" stackId="1" stroke="#8B5CF6" fill="#8B5CF6" fillOpacity={0.6} name="Total Transactions" />
+                  <Area type="monotone" dataKey="newAdmins" stackId="1" stroke="#F59E0B" fill="#F59E0B" fillOpacity={0.6} name="New Admins" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
+        {/* Admin Performance Table */}
+        <div className="bg-white rounded-lg shadow-sm border">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Top Performing Admins</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admin</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credits Used</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credit Balance</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Transactions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {adminPerformance.slice(0, 10).map((admin, index) => (
+                  <tr key={admin.email} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{admin.name}</div>
+                        <div className="text-sm text-gray-500">{admin.email}</div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{admin.location}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${admin.revenue.toFixed(2)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{admin.creditsUsed.toLocaleString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{admin.creditBalance.toLocaleString()}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{admin.transactionCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-gray-700 font-semibold mb-4">User Plan Distribution</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={dashboardData.planDistributionData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label={({ name, percent }: { name: string; percent: number }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                >
-                  {dashboardData.planDistributionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => `${value}%`} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+        {/* Additional Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h4 className="text-sm font-medium text-gray-600 mb-2">Average Credit Balance</h4>
+            <p className="text-2xl font-bold text-blue-600">{avgCreditBalance.toFixed(0)}</p>
+            <p className="text-sm text-gray-500 mt-1">Per admin</p>
           </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h3 className="text-gray-700 font-semibold mb-4">Feature Usage (%)</h3>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={dashboardData.featureUsageData}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                layout="vertical"
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" domain={[0, 100]} />
-                <YAxis dataKey="feature" type="category" />
-                <Tooltip formatter={(value: number) => `${value}%`} />
-                <Legend />
-                <Bar dataKey="usage" fill="#10B981" />
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h4 className="text-sm font-medium text-gray-600 mb-2">Total Refunds</h4>
+            <p className="text-2xl font-bold text-red-600">${totalRefunds.toFixed(2)}</p>
+            {totalRevenue > 0 ? (
+              <p className="text-sm text-gray-500 mt-1">{((totalRefunds / totalRevenue) * 100).toFixed(1)}% of revenue</p>
+            ) : (
+              <p className="text-sm text-gray-500 mt-1">--% of total</p>
+            )}
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border p-6">
+            <h4 className="text-sm font-medium text-gray-600 mb-2">Failed Transactions</h4>
+            <p className="text-2xl font-bold text-orange-600">{failedTransactions}</p>
+            {transactions.length > 0 ? (
+              <p className="text-sm text-gray-500 mt-1">
+                {((failedTransactions / transactions.length) * 100).toFixed(1)}% of total
+              </p>
+            ) : (
+              <p className="text-sm text-gray-500 mt-1">--% of total</p>
+            )}
           </div>
         </div>
       </div>
@@ -724,5 +996,4 @@ const SaasProviderDashboard: React.FC = () => {
   );
 };
 
-export default SaasProviderDashboard;
-
+export default AnalyticsDashboard;
