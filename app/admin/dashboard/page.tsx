@@ -710,7 +710,7 @@ const AdminDashboard: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold">Admin Analytics Dashboard</h1>
           <p className="text-gray-500">
-            {session?.user?.centreName || 'Business Operations'} - {operators.length} operators, {inventory.length} items
+            { 'Business Operations'} - {operators.length} operators, {inventory.length} items
           </p>
         </div>
         <div className="flex items-center space-x-4">
