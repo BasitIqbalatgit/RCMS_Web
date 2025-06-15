@@ -1,260 +1,10 @@
-
-
-
-// 'use client';
-
-// import React, { useState, useRef, ChangeEvent, DragEvent, MouseEvent } from 'react';
-
-// const ApplyModification: React.FC = () => {
-//   const [selectedImage, setSelectedImage] = useState<File | null>(null);
-//   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-//   const [classificationResult, setClassificationResult] = useState<string>('');
-//   const [segmentedImageUrl, setSegmentedImageUrl] = useState<string | null>(null);
-//   const [isLoading, setIsLoading] = useState<boolean>(false);
-//   const [error, setError] = useState<string | null>(null);
-//   const fileInputRef = useRef<HTMLInputElement>(null);
-
-//   const revokePreviewUrl = (): void => {
-//     if (previewUrl) {
-//       URL.revokeObjectURL(previewUrl);
-//     }
-//   };
-
-//   const handleImageUpload = (event: ChangeEvent<HTMLInputElement>): void => {
-//     const file = event.target.files?.[0];
-//     if (!file || !file.type.startsWith('image/')) {
-//       setError('Please upload a valid image file');
-//       return;
-//     }
-
-//     revokePreviewUrl();
-//     setSelectedImage(file);
-//     setClassificationResult('');
-//     setSegmentedImageUrl(null);
-//     setError(null);
-//     const fileUrl = URL.createObjectURL(file);
-//     setPreviewUrl(fileUrl);
-//     classifyImage(file);
-//   };
-
-//   const classifyImage = async (imageFile: File): Promise<void> => {
-//     setIsLoading(true);
-//     try {
-//       const formData = new FormData();
-//       formData.append('image', imageFile);
-
-//       const response = await fetch('/api/operator/classify-car', {
-//         method: 'POST',
-//         body: formData,
-//         headers: {
-//           Accept: 'application/json',
-//         },
-//       });
-
-//       const data: { result: string; error?: string } = await response.json();
-//       if (!response.ok) {
-//         throw new Error(data.error || 'Failed to classify image');
-//       }
-
-//       if (data.result.toLowerCase().includes('car')) {
-//         setClassificationResult('This is a car');
-//         segmentImage(imageFile); // Call segmentation if it's a car
-//       } else {
-//         setClassificationResult('This is not a car');
-//       }
-//     } catch (err) {
-//       console.error('Classification error:', err);
-//       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   const segmentImage = async (imageFile: File): Promise<void> => {
-//     try {
-//       const formData = new FormData();
-//       formData.append('image', imageFile);
-
-//       const response = await fetch('/api/operator/segment', {
-//         method: 'POST',
-//         body: formData,
-//         headers: {
-//           Accept: 'application/json',
-//         },
-//       });
-
-//       const data: { segmentedImageUrl: string; error?: string } = await response.json();
-//       if (!response.ok) {
-//         throw new Error(data.error || 'Failed to segment image');
-//       }
-
-//       setSegmentedImageUrl(`${data.segmentedImageUrl}?t=${Date.now()}`); // Add timestamp to force refresh
-//     } catch (err) {
-//       console.error('Segmentation error:', err);
-//       setError(err instanceof Error ? err.message : 'Failed to segment image');
-//     }
-//   };
-
-//   const handleDragOver = (e: DragEvent<HTMLDivElement>): void => {
-//     e.preventDefault();
-//     e.dataTransfer.dropEffect = 'copy';
-//   };
-
-//   const handleDrop = (e: DragEvent<HTMLDivElement>): void => {
-//     e.preventDefault();
-//     const file = e.dataTransfer.files?.[0];
-//     if (!file || !file.type.startsWith('image/')) {
-//       setError('Please drop a valid image file');
-//       return;
-//     }
-
-//     revokePreviewUrl();
-//     setSelectedImage(file);
-//     const fileUrl = URL.createObjectURL(file);
-//     setPreviewUrl(fileUrl);
-//     classifyImage(file);
-//   };
-
-//   const triggerFileInput = (): void => {
-//     fileInputRef.current?.click();
-//   };
-
-//   const resetState = (e: MouseEvent<HTMLButtonElement>): void => {
-//     e.stopPropagation();
-//     revokePreviewUrl();
-//     setPreviewUrl(null);
-//     setSelectedImage(null);
-//     setClassificationResult('');
-//     setSegmentedImageUrl(null);
-//     setError(null);
-//     if (fileInputRef.current) {
-//       fileInputRef.current.value = '';
-//     }
-//   };
-
-//   return (
-//     <div className="max-w-6xl mx-auto p-6 flex flex-col lg:flex-row gap-6">
-//       {/* Left Section: Image Upload and Classification */}
-//       <div className="w-full lg:w-1/2">
-//         <h1 className="text-3xl font-bold text-center mb-8">Car Classification</h1>
-
-//         <div
-//           className="border-2 border-dashed border-gray-300 rounded-lg p-8 mb-6 text-center cursor-pointer hover:bg-gray-50 transition-colors"
-//           onClick={triggerFileInput}
-//           onDragOver={handleDragOver}
-//           onDrop={handleDrop}
-//         >
-//           <input
-//             type="file"
-//             ref={fileInputRef}
-//             className="hidden"
-//             accept="image/jpeg,image/png,image/gif"
-//             onChange={handleImageUpload}
-//           />
-
-//           {!previewUrl ? (
-//             <div className="py-12">
-//               <svg
-//                 xmlns="http://www.w3.org/2000/svg"
-//                 className="h-16 w-16 mx-auto text-gray-400 mb-4"
-//                 fill="none"
-//                 viewBox="0 0 24 24"
-//                 stroke="currentColor"
-//               >
-//                 <path
-//                   strokeLinecap="round"
-//                   strokeLinejoin="round"
-//                   strokeWidth={2}
-//                   d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-//                 />
-//               </svg>
-//               <p className="text-lg text-gray-600">Click to upload or drag and drop</p>
-//               <p className="text-sm text-gray-500 mt-1">Supported formats: JPG, PNG, GIF</p>
-//             </div>
-//           ) : (
-//             <div className="relative">
-//               <img
-//                 src={previewUrl}
-//                 alt="Preview"
-//                 className="max-h-64 mx-auto rounded-lg shadow-md object-contain"
-//               />
-//               <button
-//                 className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
-//                 onClick={resetState}
-//                 aria-label="Remove image"
-//               >
-//                 <svg
-//                   xmlns="http://www.w3.org/2000/svg"
-//                   className="h-5 w-5"
-//                   viewBox="0 0 20 20"
-//                   fill="currentColor"
-//                 >
-//                   <path
-//                     fillRule="evenodd"
-//                     d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-//                     clipRule="evenodd"
-//                   />
-//                 </svg>
-//               </button>
-//             </div>
-//           )}
-//         </div>
-
-//         <div className="bg-gray-100 rounded-lg p-6 text-center">
-//           <h2 className="text-xl font-semibold mb-4">Classification Result</h2>
-
-//           {isLoading ? (
-//             <div className="flex justify-center items-center py-6">
-//               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-//               <span className="ml-2 text-gray-600">Analyzing image...</span>
-//             </div>
-//           ) : error ? (
-//             <div className="text-red-500 py-4">{error}</div>
-//           ) : classificationResult ? (
-//             <div className="text-2xl font-bold py-4 text-gray-800">{classificationResult}</div>
-//           ) : (
-//             <p className="text-gray-500 py-4">Upload an image to see classification results</p>
-//           )}
-//         </div>
-
-//         <div className="mt-6 text-center text-sm text-gray-500">
-//           <p>This component uses a CNN model to classify car images</p>
-//         </div>
-//       </div>
-
-//       {/* Right Section: Segmented Parts */}
-//       <div className="w-full lg:w-1/2">
-//         <h1 className="text-3xl font-bold text-center mb-8">Car Part Detection</h1>
-//         <div className="border-2 border-gray-300 rounded-lg p-6  shadow-md h-fit">
-//           <h2 className="text-2xl font-bold mb-4 text-center">Detected Parts</h2>
-//           {segmentedImageUrl ? (
-//             <img
-//               src={segmentedImageUrl}
-//               alt="Segmented Image"
-//               className="max-h-64 mx-auto rounded-lg shadow-md object-contain"
-//             />
-
-//           ) : (
-//             <p className="text-gray-600">Upload a car image to see Detected parts.</p>
-//           )}
-//         </div>
-//         <div className="mt-6 text-center text-sm text-gray-500">
-//           <p>This component uses a YOLO model to Detect car parts </p>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default ApplyModification;
-
-
-
 'use client';
 
 import React, { useState, useRef, useEffect, ChangeEvent, DragEvent, MouseEvent } from 'react';
 import { useSession } from 'next-auth/react';
 import { UserRole } from '@/lib/types/UserTypes';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 
 interface AdminData {
   id: string;
@@ -265,17 +15,51 @@ interface AdminData {
   location?: string;
 }
 
+interface DetectionResult {
+  class: string;
+  confidence: number;
+  bbox?: number[];
+  message?: string;
+}
+
+interface PartDetection {
+  class_name: string;
+  confidence: number;
+  bbox: number[];
+  center_point: [number, number];
+  color?: string;
+}
+
+interface SegmentedResult {
+  segmentedImageUrl: string;
+  segmentedParts: {
+    class_name: string;
+    confidence: number;
+    segmented_image_path: string;
+    mask_path: string;
+  }[];
+}
+
 const ApplyModification: React.FC = () => {
   const { data: session, status } = useSession();
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [classificationResult, setClassificationResult] = useState<string>('');
+  const [detectedParts, setDetectedParts] = useState<PartDetection[]>([]);
   const [segmentedImageUrl, setSegmentedImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isSegmenting, setIsSegmenting] = useState<boolean>(false);
+  const [isDetectingParts, setIsDetectingParts] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [adminData, setAdminData] = useState<AdminData | null>(null);
   const [isLoadingAdmin, setIsLoadingAdmin] = useState<boolean>(true);
+  const [processingStep, setProcessingStep] = useState<string>('');
+  const [selectedParts, setSelectedParts] = useState<string[]>([]);
+  const [showPartSelection, setShowPartSelection] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const [showResults, setShowResults] = useState<boolean>(false);
+  const [segmentedResult, setSegmentedResult] = useState<SegmentedResult | null>(null);
 
   // Fetch admin data when component mounts
   useEffect(() => {
@@ -283,7 +67,7 @@ const ApplyModification: React.FC = () => {
       if (status === 'authenticated' && session?.user?.id) {
         try {
           setIsLoadingAdmin(true);
-          
+
           // If user is operator, get adminId first
           if (session.user.role === UserRole.OPERATOR) {
             const operatorResponse = await fetch(`/api/operator/${session.user.id}`);
@@ -291,7 +75,7 @@ const ApplyModification: React.FC = () => {
               throw new Error('Failed to fetch operator data');
             }
             const operatorData = await operatorResponse.json();
-            
+
             if (operatorData.adminId) {
               const adminResponse = await fetch(`/api/admins/${operatorData.adminId}`);
               if (!adminResponse.ok) {
@@ -376,8 +160,12 @@ const ApplyModification: React.FC = () => {
     revokePreviewUrl();
     setSelectedImage(file);
     setClassificationResult('');
+    setDetectedParts([]);
     setSegmentedImageUrl(null);
     setError(null);
+    setProcessingStep('');
+    setShowPartSelection(false);
+    setSelectedParts([]);
     const fileUrl = URL.createObjectURL(file);
     setPreviewUrl(fileUrl);
     classifyImage(file);
@@ -385,6 +173,8 @@ const ApplyModification: React.FC = () => {
 
   const classifyImage = async (imageFile: File): Promise<void> => {
     setIsLoading(true);
+    setProcessingStep('Step 1/3: Classifying image...');
+
     try {
       // Deduct credit before processing
       const creditDeducted = await deductCredit();
@@ -408,26 +198,41 @@ const ApplyModification: React.FC = () => {
         throw new Error(data.error || 'Failed to classify image');
       }
 
-      if (data.result.toLowerCase().includes('car')) {
-        setClassificationResult('This is a car');
-        segmentImage(imageFile); // Call segmentation if it's a car
+      setClassificationResult(data.result);
+
+      // Check if it's a car - need to be more specific to avoid false positives
+      const resultLower = data.result.toLowerCase();
+      const isCarDetected = resultLower.includes('car') && !resultLower.includes('not a car') && !resultLower.includes('no car');
+
+      if (isCarDetected) {
+        setProcessingStep('Step 1/3: Car detected! Moving to step 2...');
+        // Small delay to show the classification result
+        setTimeout(() => {
+          detectCarParts(imageFile);
+        }, 1000);
       } else {
-        setClassificationResult('This is not a car');
+        // Pipeline stops here - not a car, show specific message
+        setProcessingStep('');
+        setIsLoading(false);
+        setError('Upload the car image please');
+        return;
       }
     } catch (err) {
       console.error('Classification error:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
-    } finally {
+      setProcessingStep('Pipeline stopped: Classification failed');
       setIsLoading(false);
     }
   };
+  const detectCarParts = async (imageFile: File): Promise<void> => {
+    setIsDetectingParts(true);
+    setProcessingStep('Step 2/3: Detecting car parts with YOLO...');
 
-  const segmentImage = async (imageFile: File): Promise<void> => {
     try {
       const formData = new FormData();
       formData.append('image', imageFile);
 
-      const response = await fetch('/api/operator/segment', {
+      const response = await fetch('/api/operator/detect-parts', {
         method: 'POST',
         body: formData,
         headers: {
@@ -435,16 +240,115 @@ const ApplyModification: React.FC = () => {
         },
       });
 
-      const data: { segmentedImageUrl: string; error?: string } = await response.json();
+      const data: { parts: PartDetection[]; error?: string } = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to segment image');
+        throw new Error(data.error || 'Failed to detect car parts');
       }
 
-      setSegmentedImageUrl(`${data.segmentedImageUrl}?t=${Date.now()}`); // Add timestamp to force refresh
+      // Check if any parts were detected - if not, stop the pipeline
+      if (data.parts && data.parts.length > 0) {
+        setDetectedParts(data.parts);
+        setShowPartSelection(true);
+        setProcessingStep(`Step 2/3: Detected ${data.parts.length} car parts! Select parts for step 3.`);
+      } else {
+        // Pipeline stops here - no parts detected
+        setDetectedParts([]);
+        setShowPartSelection(false);
+        setProcessingStep('Pipeline stopped: No car parts detected in the image');
+        // You might want to show this as an error or info message
+        setError('No car parts were detected in this image. Please try with a clearer car image.');
+      }
+
+    } catch (err) {
+      console.error('Part detection error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to detect car parts');
+      setProcessingStep('Pipeline stopped: Part detection failed');
+    } finally {
+      setIsDetectingParts(false);
+      setIsLoading(false);
+    }
+  };
+
+  const segmentSelectedParts = async () => {
+    if (!selectedParts.length || !detectedParts.length || !selectedImage) {
+      setError('Please select parts to segment and ensure an image is uploaded');
+      return;
+    }
+
+    setIsSegmenting(true);
+    setProcessingStep('Segmenting selected parts...');
+    setError(null);
+    setShowResults(true);
+    setSegmentedResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('image', selectedImage);
+      formData.append('selectedParts', JSON.stringify(selectedParts));
+      formData.append('detectedParts', JSON.stringify(detectedParts));
+
+      const response = await fetch('/api/operator/segment', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      console.log('Received segmentation data:', {
+        success: data.success,
+        timestamp: data.timestamp,
+        hasSegmentedImageUrl: !!data.segmentedImageUrl,
+        segmentedPartsCount: data.segmentedParts?.length,
+        segmentedParts: data.segmentedParts?.map(part => ({
+          class_name: part.class_name,
+          confidence: part.confidence,
+          hasImagePath: !!part.segmented_image_path,
+          imagePath: part.segmented_image_path
+        }))
+      });
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Segmentation failed');
+      }
+
+      if (!data.success || !data.timestamp) {
+        throw new Error('Invalid response: missing timestamp');
+      }
+
+      // Update the segmented result state
+      const result = {
+        segmentedImageUrl: data.segmentedImageUrl,
+        segmentedParts: data.segmentedParts
+      };
+      console.log('Setting segmented result:', {
+        hasImageUrl: !!result.segmentedImageUrl,
+        partsCount: result.segmentedParts?.length,
+        parts: result.segmentedParts?.map(part => ({
+          class_name: part.class_name,
+          confidence: part.confidence,
+          hasImagePath: !!part.segmented_image_path,
+          imagePath: part.segmented_image_path
+        }))
+      });
+      setSegmentedResult(result);
+      setProcessingStep('Segmentation complete!');
+
     } catch (err) {
       console.error('Segmentation error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to segment image');
+      setError(err instanceof Error ? err.message : 'Failed to segment parts');
+      setProcessingStep('');
+      setIsSegmenting(false);
+      setShowResults(false);
+    } finally {
+      setIsSegmenting(false);
     }
+  };
+
+  const handlePartSelection = (partName: string): void => {
+    setSelectedParts(prev =>
+      prev.includes(partName)
+        ? prev.filter(p => p !== partName)
+        : [...prev, partName]
+    );
   };
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>): void => {
@@ -468,6 +372,13 @@ const ApplyModification: React.FC = () => {
 
     revokePreviewUrl();
     setSelectedImage(file);
+    setClassificationResult('');
+    setDetectedParts([]);
+    setSegmentedImageUrl(null);
+    setError(null);
+    setProcessingStep('');
+    setShowPartSelection(false);
+    setSelectedParts([]);
     const fileUrl = URL.createObjectURL(file);
     setPreviewUrl(fileUrl);
     classifyImage(file);
@@ -482,221 +393,314 @@ const ApplyModification: React.FC = () => {
     fileInputRef.current?.click();
   };
 
-  const resetState = (e: MouseEvent<HTMLButtonElement>): void => {
-    e.stopPropagation();
-    revokePreviewUrl();
+  const handleReset = () => {
+    setShowResults(false);
+    setIsSegmenting(false);
+    setProcessingStep('');
+    setError(null);
+    setSelectedParts([]);
+    setDetectedParts([]);
+    setClassificationResult('');
     setPreviewUrl(null);
     setSelectedImage(null);
-    setClassificationResult('');
-    setSegmentedImageUrl(null);
-    setError(null);
+    setSegmentedResult(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  // Show loading state while fetching admin data
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      revokePreviewUrl();
+      setIsSegmenting(false);
+      setProcessingStep('');
+    };
+  }, []);
+
   if (status === 'loading' || isLoadingAdmin) {
     return (
-      <div className="max-w-6xl mx-auto p-6 flex items-center justify-center min-h-screen">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
 
-  // Show authentication error
   if (status === 'unauthenticated') {
     return (
-      <div className="max-w-6xl mx-auto p-6 flex items-center justify-center min-h-screen">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 text-lg">Please sign in to access this service</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show low credits message
-  if (adminData && adminData.creditBalance <= 0) {
-    return (
-      <div className="max-w-6xl mx-auto p-6 flex items-center justify-center min-h-screen">
-        <div className="text-center bg-yellow-50 border border-yellow-200 rounded-lg p-8 max-w-md">
-          <div className="text-yellow-600 mb-4">
-            <svg className="w-16 h-16 mx-auto" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Low Credits</h2>
-          <p className="text-gray-600 mb-6">
-            You have insufficient credits to use this service. Please contact your admin to purchase more credits.
-          </p>
-          <div className="bg-gray-100 rounded-lg p-4">
-            <p className="text-sm text-gray-700">
-              <strong>Current Balance:</strong> {adminData.creditBalance} credits
-            </p>
-            {session?.user?.role === UserRole.OPERATOR && (
-              <p className="text-sm text-gray-600 mt-2">
-                Contact your admin to add more credits to your account.
-              </p>
-            )}
-          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
+          <p className="text-gray-600">Please log in to access this page.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 flex flex-col lg:flex-row gap-6">
-      {/* Credit Balance Display */}
-      {/* {adminData && (
-        <div className="w-full mb-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" />
-                </svg>
-                <span className="text-blue-800 font-medium">Available Credits:</span>
-              </div>
-              <span className={`font-bold text-lg ${adminData.creditBalance <= 5 ? 'text-red-600' : 'text-blue-600'}`}>
-                {adminData.creditBalance}
-              </span>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Car Analysis & Modification</h1>
+              <p className="text-gray-600 mt-2">Upload a car image to analyze, detect parts, and apply modifications</p>
             </div>
-            {adminData.creditBalance <= 5 && adminData.creditBalance > 0 && (
-              <p className="text-sm text-orange-600 mt-2">
-                ⚠️ Low credit balance. Each image analysis costs 1 credit.
+            <div className="text-right">
+              <p className="text-sm text-gray-500">Available Credits</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {adminData?.creditBalance || 0}
               </p>
-            )}
+            </div>
           </div>
         </div>
-      )} */}
 
-      {/* Left Section: Image Upload and Classification */}
-      <div className="w-full lg:w-1/2">
-        <h1 className="text-3xl font-bold text-center mb-8">Car Classification</h1>
+        {/* Main Content */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          {!showResults ? (
+            // Upload and Detection Section
+            <>
+        {/* Upload Section */}
+              <div className="mb-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Upload Car Image</h2>
 
-        <div
-          className={`border-2 border-dashed rounded-lg p-8 mb-6 text-center transition-colors ${
-            adminData && adminData.creditBalance > 0 
-              ? 'border-gray-300 cursor-pointer hover:bg-gray-50' 
-              : 'border-gray-200 cursor-not-allowed bg-gray-50'
-          }`}
-          onClick={triggerFileInput}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-        >
-          <input
-            type="file"
-            ref={fileInputRef}
-            className="hidden"
-            accept="image/jpeg,image/png,image/gif"
-            onChange={handleImageUpload}
-            disabled={!adminData || adminData.creditBalance <= 0}
-          />
+            <div
+              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onClick={triggerFileInput}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
 
-          {!previewUrl ? (
-            <div className="py-12">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={`h-16 w-16 mx-auto mb-4 ${
-                  adminData && adminData.creditBalance > 0 ? 'text-gray-400' : 'text-gray-300'
-                }`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-              <p className={`text-lg ${adminData && adminData.creditBalance > 0 ? 'text-gray-600' : 'text-gray-400'}`}>
-                {adminData && adminData.creditBalance > 0 
-                  ? 'Click to upload or drag and drop' 
-                  : 'Insufficient credits - Cannot upload'
-                }
-              </p>
-              <p className={`text-sm mt-1 ${adminData && adminData.creditBalance > 0 ? 'text-gray-500' : 'text-gray-400'}`}>
-                Supported formats: JPG, PNG, GIF
-              </p>
-              {adminData && adminData.creditBalance > 0 && (
-                <p className="text-xs text-blue-600 mt-2">
-                  Cost: 1 credit per analysis
-                </p>
+              {previewUrl ? (
+                <div className="relative">
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    className="max-h-64 mx-auto rounded-lg shadow-md"
+                  />
+                  <button
+                        onClick={handleReset}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <p className="text-gray-600 mb-2">Click to upload or drag and drop</p>
+                  <p className="text-sm text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                </div>
+              )}
+                </div>
+              </div>
+
+              {/* Analysis Results */}
+              {(classificationResult || detectedParts.length > 0) && (
+                <div className="mt-8">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Analysis Results</h2>
+
+            {/* Classification Result */}
+            {classificationResult && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h3 className="font-semibold text-green-800 mb-2">Classification Result</h3>
+                <p className="text-green-700">{classificationResult}</p>
+              </div>
+            )}
+
+            {/* Detected Parts */}
+            {showPartSelection && detectedParts.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3">Detected Car Parts</h3>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {detectedParts.map((part, index) => (
+                    <label
+                            key={`${part.class_name}-${index}`}
+                      className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
+                    >
+                      <input
+                        type="checkbox"
+                              checked={selectedParts.includes(part.class_name)}
+                              onChange={() => handlePartSelection(part.class_name)}
+                              className="mr-3 h-4 w-4"
+                            />
+                            <div className="flex items-center flex-1">
+                        <div
+                          className="w-4 h-4 rounded-full mr-2"
+                                style={{ backgroundColor: part.color || `hsl(${(index * 137.5) % 360}, 70%, 50%)` }}
+                        ></div>
+                              <span className="text-sm font-medium flex-1">{part.class_name}</span>
+                        <span className="text-xs text-gray-500 ml-2">
+                          ({(part.confidence * 100).toFixed(1)}%)
+                        </span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                <button
+                  onClick={segmentSelectedParts}
+                  disabled={selectedParts.length === 0 || isSegmenting}
+                        className={`w-full py-2 px-4 rounded-lg transition-colors ${
+                          isSegmenting || selectedParts.length === 0
+                            ? 'bg-gray-400 cursor-not-allowed opacity-75' 
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        }`}
+                        style={{ pointerEvents: isSegmenting ? 'none' : 'auto' }}
+                      >
+                        {isSegmenting ? (
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Segmenting...
+                          </div>
+                        ) : (
+                          `Segment Selected Parts (${selectedParts.length})`
+                        )}
+                </button>
+              </div>
+            )}
+                </div>
+              )}
+            </>
+          ) : (
+            // Results Section
+            <div className="space-y-6">
+              {/* Processing Status */}
+              {processingStep && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center">
+                    {isSegmenting && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-3"></div>
+                    )}
+                    <p className="text-blue-700">{processingStep}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Display */}
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700">{error}</p>
+                  <button
+                    onClick={handleReset}
+                    className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
+
+              {/* Segmented Results */}
+              {segmentedResult && !isSegmenting && !error && (
+                <div className="space-y-8">
+                  {/* Modified Image */}
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Modified Image</h2>
+                    <div className="relative aspect-video w-full overflow-hidden rounded-lg border">
+                      <Image
+                        src={segmentedResult.segmentedImageUrl}
+                        alt="Modified car image"
+                        fill
+                        className="object-contain"
+                        onError={(e) => {
+                          console.error('Failed to load modified image:', e);
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Segmented Parts */}
+                  <div>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                      Segmented Parts ({segmentedResult.segmentedParts.length})
+                    </h2>
+                    {segmentedResult.segmentedParts.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {segmentedResult.segmentedParts.map((part, index) => (
+                          <div key={`${part.class_name}-${index}`} className="space-y-2">
+                            <div className="relative aspect-square w-full overflow-hidden rounded-lg border bg-gray-50">
+                              <Image
+                                src={part.segmented_image_path}
+                                alt={`Segmented ${part.class_name}`}
+                                fill
+                                className="object-contain"
+                                onError={(e) => {
+                                  console.error(`Failed to load image for ${part.class_name}:`, e);
+                                }}
+                              />
+                            </div>
+                            <div className="p-4 bg-gray-50 rounded-lg">
+                              <h3 className="font-semibold capitalize">{part.class_name}</h3>
+                              <p className="text-sm text-gray-600">
+                                Confidence: {(part.confidence * 100).toFixed(1)}%
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center p-4 bg-gray-50 rounded-lg">
+                        <p className="text-gray-600">No parts were successfully segmented</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Reset Button */}
+                  <div className="flex justify-center">
+                    <button
+                      onClick={handleReset}
+                      className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      Start New Analysis
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
-          ) : (
-            <div className="relative">
-              <img
-                src={previewUrl}
-                alt="Preview"
-                className="max-h-64 mx-auto rounded-lg shadow-md object-contain"
-              />
-              <button
-                className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
-                onClick={resetState}
-                aria-label="Remove image"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-5 w-5"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
+          )}
+        </div>
+
+        {/* Instructions */}
+        <div className="mt-8 bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">How It Works</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="bg-blue-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                <span className="text-blue-600 font-bold text-lg">1</span>
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">Upload Image</h3>
+              <p className="text-gray-600 text-sm">Upload a clear image of a car for analysis</p>
             </div>
-          )}
-        </div>
-
-        <div className="bg-gray-100 rounded-lg p-6 text-center">
-          <h2 className="text-xl font-semibold mb-4">Classification Result</h2>
-
-          {isLoading ? (
-            <div className="flex justify-center items-center py-6">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              <span className="ml-2 text-gray-600">Analyzing image...</span>
+            <div className="text-center">
+              <div className="bg-blue-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                <span className="text-blue-600 font-bold text-lg">2</span>
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">Detect Parts</h3>
+              <p className="text-gray-600 text-sm">AI analyzes and identifies different car parts</p>
             </div>
-          ) : error ? (
-            <div className="text-red-500 py-4">{error}</div>
-          ) : classificationResult ? (
-            <div className="text-2xl font-bold py-4 text-gray-800">{classificationResult}</div>
-          ) : (
-            <p className="text-gray-500 py-4">Upload an image to see classification results</p>
-          )}
-        </div>
-
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>This component uses a CNN model to classify car images</p>
-        </div>
-      </div>
-
-      {/* Right Section: Segmented Parts */}
-      <div className="w-full lg:w-1/2">
-        <h1 className="text-3xl font-bold text-center mb-8">Car Part Detection</h1>
-        <div className="border-2 border-gray-300 rounded-lg p-6 shadow-md h-fit">
-          <h2 className="text-2xl font-bold mb-4 text-center">Detected Parts</h2>
-          {segmentedImageUrl ? (
-            <img
-              src={segmentedImageUrl}
-              alt="Segmented Image"
-              className="max-h-64 mx-auto rounded-lg shadow-md object-contain"
-            />
-          ) : (
-            <p className="text-gray-600">Upload a car image to see detected parts.</p>
-          )}
-        </div>
-        <div className="mt-6 text-center text-sm text-gray-500">
-          <p>This component uses a YOLO model to detect car parts</p>
+            <div className="text-center">
+              <div className="bg-blue-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                <span className="text-blue-600 font-bold text-lg">3</span>
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-2">Segment & Modify</h3>
+              <p className="text-gray-600 text-sm">Select parts to segment and apply modifications</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

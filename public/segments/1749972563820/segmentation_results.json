@@ -1,0 +1,36 @@
+[
+  {
+    "class_name": "Front bumper",
+    "confidence": 0.9208473563194275,
+    "bbox": [
+      5.133996963500977,
+      73.57150268554688,
+      144.2874298095703,
+      120.68465423583984
+    ],
+    "center_point": [
+      74,
+      97
+    ],
+    "segmented_image_path": "D:\\FINAL YEAR PROJECT (FYP)\\RCMS_Web\\public\\segments\\1749972563820\\Front bumper_0_0.92.jpg",
+    "mask_path": "D:\\FINAL YEAR PROJECT (FYP)\\RCMS_Web\\public\\segments\\1749972563820\\Front bumper_0_mask.jpg",
+    "mask_area": 3948
+  },
+  {
+    "class_name": "Headlight - -L-",
+    "confidence": 0.34694042801856995,
+    "bbox": [
+      87.06712341308594,
+      60.731170654296875,
+      142.4244842529297,
+      80.99009704589844
+    ],
+    "center_point": [
+      114,
+      70
+    ],
+    "segmented_image_path": "D:\\FINAL YEAR PROJECT (FYP)\\RCMS_Web\\public\\segments\\1749972563820\\Headlight - -L-_1_0.35.jpg",
+    "mask_path": "D:\\FINAL YEAR PROJECT (FYP)\\RCMS_Web\\public\\segments\\1749972563820\\Headlight - -L-_1_mask.jpg",
+    "mask_area": 489
+  }
+]

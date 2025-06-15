@@ -1,0 +1,36 @@
+[
+  {
+    "class_name": "Headlight - -L-",
+    "confidence": 0.3346327841281891,
+    "bbox": [
+      45.13525390625,
+      66.39976501464844,
+      85.21602630615234,
+      93.58575439453125
+    ],
+    "center_point": [
+      65,
+      79
+    ],
+    "segmented_image_path": "D:\\FINAL YEAR PROJECT (FYP)\\RCMS_Web\\public\\segments\\1749975653617\\Headlight - -L-_0_0.33.jpg",
+    "mask_path": "D:\\FINAL YEAR PROJECT (FYP)\\RCMS_Web\\public\\segments\\1749975653617\\Headlight - -L-_0_mask.jpg",
+    "mask_area": 666
+  },
+  {
+    "class_name": "Headlight - -R-",
+    "confidence": 0.2904428243637085,
+    "bbox": [
+      45.529029846191406,
+      66.58769989013672,
+      85.39221954345703,
+      94.03339385986328
+    ],
+    "center_point": [
+      65,
+      80
+    ],
+    "segmented_image_path": "D:\\FINAL YEAR PROJECT (FYP)\\RCMS_Web\\public\\segments\\1749975653617\\Headlight - -R-_1_0.29.jpg",
+    "mask_path": "D:\\FINAL YEAR PROJECT (FYP)\\RCMS_Web\\public\\segments\\1749975653617\\Headlight - -R-_1_mask.jpg",
+    "mask_area": 667
+  }
+]
