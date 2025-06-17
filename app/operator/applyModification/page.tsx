@@ -557,6 +557,42 @@ const ApplyModification: React.FC = () => {
 
         {/* Main Content */}
         <div className="bg-white rounded-lg shadow-sm p-6">
+          {/* Processing Status - Show prominently during all processing steps */}
+          {(isLoading || isDetectingParts || isSegmenting) && processingStep && (
+            <div className="mb-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg shadow-sm">
+              <div className="flex items-center justify-center">
+                {(isLoading || isDetectingParts || isSegmenting) && (
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 mr-4"></div>
+                )}
+                <div className="text-center">
+                  <p className="text-blue-800 font-semibold text-lg">{processingStep}</p>
+                  {isLoading && (
+                    <p className="text-blue-600 text-sm mt-1">Analyzing image content...</p>
+                  )}
+                  {isDetectingParts && (
+                    <p className="text-blue-600 text-sm mt-1">Identifying car components...</p>
+                  )}
+                  {isSegmenting && (
+                    <p className="text-blue-600 text-sm mt-1">Extracting selected parts...</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Error Display - Show prominently */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-700">{error}</p>
+              <button
+                onClick={handleReset}
+                className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+
           {!showResults ? (
             // Upload and Detection Section
             <>
@@ -600,7 +636,7 @@ const ApplyModification: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                   </svg>
                   <p className="text-gray-600 mb-2">Click to upload or drag and drop</p>
-                  <p className="text-sm text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                  <p className="text-sm text-gray-500">PNG, JPG, JPEG up to 10MB</p>
                 </div>
               )}
                 </div>
