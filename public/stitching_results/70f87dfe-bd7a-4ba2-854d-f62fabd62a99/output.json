@@ -1,0 +1,1 @@
+{"success": false, "error": "OpenCV(4.11.0) :-1: error: (-5:Bad argument) in function 'addWeighted'\n> Overload resolution failed:\n>  - Argument 'alpha' can not be treated as a double\n>  - Argument 'alpha' can not be treated as a double\n"}

@@ -1,0 +1,36 @@
+[
+  {
+    "class_name": "Passenger-s door - -R-L-",
+    "confidence": 0.682443380355835,
+    "bbox": [
+      137.59136962890625,
+      30.796531677246094,
+      204.6175994873047,
+      114.63541412353516
+    ],
+    "center_point": [
+      171,
+      72
+    ],
+    "segmented_image_path": "D:\\FINAL YEAR PROJECT (FYP)\\RCMS_Web\\public\\segments\\1749998772106\\Passenger-s door - -R-L-_0_0.68.jpg",
+    "mask_path": "D:\\FINAL YEAR PROJECT (FYP)\\RCMS_Web\\public\\segments\\1749998772106\\Passenger-s door - -R-L-_0_mask.jpg",
+    "mask_area": 4152
+  },
+  {
+    "class_name": "Passenger-s door - -R-L-",
+    "confidence": 0.3277243971824646,
+    "bbox": [
+      66.37948608398438,
+      29.88144874572754,
+      139.93601989746094,
+      116.2125015258789
+    ],
+    "center_point": [
+      103,
+      73
+    ],
+    "segmented_image_path": "D:\\FINAL YEAR PROJECT (FYP)\\RCMS_Web\\public\\segments\\1749998772106\\Passenger-s door - -R-L-_1_0.33.jpg",
+    "mask_path": "D:\\FINAL YEAR PROJECT (FYP)\\RCMS_Web\\public\\segments\\1749998772106\\Passenger-s door - -R-L-_1_mask.jpg",
+    "mask_area": 4338
+  }
+]

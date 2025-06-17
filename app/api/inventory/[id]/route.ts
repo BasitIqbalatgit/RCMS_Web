@@ -9,7 +9,7 @@ import mongoose from 'mongoose';
 // GET - Fetch specific inventory item
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -20,7 +20,7 @@ export async function GET(
 
     await connectDB();
     
-    const { id } = params;
+    const { id } = await params;
     
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
@@ -71,7 +71,7 @@ export async function GET(
 // PUT - Update inventory item
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -82,7 +82,7 @@ export async function PUT(
 
     await connectDB();
     
-    const { id } = params;
+    const { id } = await params;
     
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(
@@ -110,6 +110,12 @@ export async function PUT(
     const body = await req.json();
     const { name, quantity, available, image, category, price } = body;
     
+    console.log("Received update data:", { name, quantity, available, image, category, price });
+    console.log("Current inventory item:", { 
+      currentQuantity: inventoryItem.quantity, 
+      currentAvailable: inventoryItem.available 
+    });
+    
     // Validate input data
     if (!name || quantity === undefined || available === undefined || !category || price === undefined) {
       return NextResponse.json(
@@ -118,9 +124,24 @@ export async function PUT(
       );
     }
     
+    // Validate quantity and available values
+    if (quantity < 0) {
+      return NextResponse.json(
+        { success: false, message: 'Quantity cannot be negative' }, 
+        { status: 400 }
+      );
+    }
+    
+    if (available < 0) {
+      return NextResponse.json(
+        { success: false, message: 'Available cannot be negative' }, 
+        { status: 400 }
+      );
+    }
+    console.log("Available Amount is : ", available, " and total quatnity is : ", quantity)
     if (available > quantity) {
       return NextResponse.json(
-        { success: false, message: 'Available cannot exceed quantity' }, 
+        { success: false, message: 'Available amount cannot exceed total quantity' }, 
         { status: 400 }
       );
     }
@@ -136,7 +157,7 @@ export async function PUT(
         price,
         updatedAt: Date.now()
       },
-      { new: true, runValidators: true }
+      { new: true, runValidators: false }
     );
     
     return NextResponse.json({ success: true, data: updatedItem });
@@ -144,6 +165,15 @@ export async function PUT(
     console.error('Inventory API error:', error);
   
     if (error instanceof Error) {
+      // Handle Mongoose validation errors specifically
+      if (error.name === 'ValidationError') {
+        const validationErrors = Object.values((error as any).errors).map((err: any) => err.message);
+        return NextResponse.json(
+          { success: false, message: 'Validation failed', errors: validationErrors }, 
+          { status: 400 }
+        );
+      }
+      
       return NextResponse.json(
         { success: false, message: 'Server error', error: error.message }, 
         { status: 500 }
@@ -160,7 +190,7 @@ export async function PUT(
 // DELETE - Remove inventory item
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -171,7 +201,7 @@ export async function DELETE(
 
     await connectDB();
     
-    const { id } = params;
+    const { id } = await params;
     
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json(

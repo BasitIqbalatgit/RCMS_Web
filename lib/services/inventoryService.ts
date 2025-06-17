@@ -4,7 +4,18 @@ const parseErrorMessage = async (response: Response, defaultMsg: string) => {
   try {
     const text = await response.text();
     const json = JSON.parse(text);
-    return json.message || defaultMsg;
+    
+    // Handle validation errors with detailed error messages
+    if (json.errors && Array.isArray(json.errors) && json.errors.length > 0) {
+      return json.errors.join(', ');
+    }
+    
+    // Handle single error message
+    if (json.message) {
+      return json.message;
+    }
+    
+    return defaultMsg;
   } catch (err) {
     console.warn('Failed to parse error message:', err);
     return defaultMsg;
@@ -35,7 +46,14 @@ export const fetchInventory = async (adminId?: string): Promise<InventoryItem[]>
 };
 
 export const addInventoryItem = async (
-  itemData: Omit<InventoryItem, 'id' | 'adminId' | 'createdAt' | 'updatedAt'>
+  itemData: {
+    name: string;
+    quantity: number;
+    available: number;
+    image?: string;
+    category: string;
+    price: number;
+  }
 ): Promise<InventoryItem> => {
   try {
     const response = await fetch('/api/inventory', {
@@ -69,6 +87,8 @@ export const updateInventoryItem = async (
   itemData: Partial<InventoryItem>
 ): Promise<InventoryItem> => {
   try {
+
+    console.log("INservices/ inventoryServices : ", itemData)
     const response = await fetch(`/api/inventory/${id}`, {
       method: 'PUT',
       headers: {

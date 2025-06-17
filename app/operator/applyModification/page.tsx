@@ -5,6 +5,8 @@ import { useSession } from 'next-auth/react';
 import { UserRole } from '@/lib/types/UserTypes';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import ReferenceImages from '@/app/components/ReferenceImages';
+import StitchingView from '@/app/components/StitchingView';
 
 interface AdminData {
   id: string;
@@ -30,14 +32,21 @@ interface PartDetection {
   color?: string;
 }
 
+interface SegmentedPart {
+  class_name: string;
+  confidence: number;
+  segmented_image_path: string;
+  mask_path: string;
+}
+
 interface SegmentedResult {
   segmentedImageUrl: string;
-  segmentedParts: {
-    class_name: string;
-    confidence: number;
-    segmented_image_path: string;
-    mask_path: string;
-  }[];
+  segmentedParts: SegmentedPart[];
+}
+
+interface SelectedReferenceImage {
+  className: string;
+  imagePath: string;
 }
 
 const ApplyModification: React.FC = () => {
@@ -60,6 +69,8 @@ const ApplyModification: React.FC = () => {
   const router = useRouter();
   const [showResults, setShowResults] = useState<boolean>(false);
   const [segmentedResult, setSegmentedResult] = useState<SegmentedResult | null>(null);
+  const [selectedReferenceImages, setSelectedReferenceImages] = useState<SelectedReferenceImage[]>([]);
+  const [showStitching, setShowStitching] = useState(false);
 
   // Fetch admin data when component mounts
   useEffect(() => {
@@ -282,10 +293,27 @@ const ApplyModification: React.FC = () => {
     setSegmentedResult(null);
 
     try {
+      // Filter detections to include only the highest confidence instance of each selected part
+      const uniqueDetections = new Map<string, PartDetection>();
+      detectedParts.forEach(part => {
+        if (selectedParts.includes(part.class_name)) {
+          const existingPart = uniqueDetections.get(part.class_name);
+          if (!existingPart || part.confidence > existingPart.confidence) {
+            uniqueDetections.set(part.class_name, part);
+          }
+        }
+      });
+
+      const filteredDetections = Array.from(uniqueDetections.values());
+      console.log('Sending unique detections for segmentation:', filteredDetections.map(part => ({
+        class_name: part.class_name,
+        confidence: part.confidence
+      })));
+
       const formData = new FormData();
       formData.append('image', selectedImage);
       formData.append('selectedParts', JSON.stringify(selectedParts));
-      formData.append('detectedParts', JSON.stringify(detectedParts));
+      formData.append('detectedParts', JSON.stringify(filteredDetections));
 
       const response = await fetch('/api/operator/segment', {
         method: 'POST',
@@ -298,14 +326,14 @@ const ApplyModification: React.FC = () => {
         timestamp: data.timestamp,
         hasSegmentedImageUrl: !!data.segmentedImageUrl,
         segmentedPartsCount: data.segmentedParts?.length,
-        segmentedParts: data.segmentedParts?.map(part => ({
+        segmentedParts: data.segmentedParts?.map((part: { class_name: any; confidence: any; segmented_image_path: any; }) => ({
           class_name: part.class_name,
           confidence: part.confidence,
           hasImagePath: !!part.segmented_image_path,
           imagePath: part.segmented_image_path
         }))
       });
-      
+
       if (!response.ok) {
         throw new Error(data.error || 'Segmentation failed');
       }
@@ -322,7 +350,7 @@ const ApplyModification: React.FC = () => {
       console.log('Setting segmented result:', {
         hasImageUrl: !!result.segmentedImageUrl,
         partsCount: result.segmentedParts?.length,
-        parts: result.segmentedParts?.map(part => ({
+        parts: result.segmentedParts?.map((part: { class_name: any; confidence: any; segmented_image_path: any; }) => ({
           class_name: part.class_name,
           confidence: part.confidence,
           hasImagePath: !!part.segmented_image_path,
@@ -418,6 +446,42 @@ const ApplyModification: React.FC = () => {
     };
   }, []);
 
+  // Add a new function to get unique parts
+  const getUniqueParts = (parts: PartDetection[]) => {
+    const uniqueParts = new Map<string, PartDetection>();
+    parts.forEach(part => {
+      // If we haven't seen this class before, or if this detection has higher confidence
+      if (!uniqueParts.has(part.class_name) ||
+        part.confidence > uniqueParts.get(part.class_name)!.confidence) {
+        uniqueParts.set(part.class_name, part);
+      }
+    });
+    return Array.from(uniqueParts.values());
+  };
+
+  const handleReferenceImageSelect = (className: string, imagePath: string | null) => {
+    setSelectedReferenceImages(prev => {
+      const filtered = prev.filter(img => img.className !== className);
+      if (imagePath) {
+        return [...filtered, { className, imagePath }];
+      }
+      return filtered;
+    });
+  };
+
+  const handleStitching = () => {
+    if (selectedReferenceImages.length === 0) {
+      alert('Please select at least one reference image to stitch');
+      return;
+    }
+    setShowStitching(true);
+  };
+
+  const handleBackFromStitching = () => {
+    setShowStitching(false);
+    setSelectedReferenceImages([]);
+  };
+
   if (status === 'loading' || isLoadingAdmin) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -437,6 +501,17 @@ const ApplyModification: React.FC = () => {
           <p className="text-gray-600">Please log in to access this page.</p>
         </div>
       </div>
+    );
+  }
+
+  if (showStitching && segmentedResult) {
+    return (
+      <StitchingView
+        segmentedImage={segmentedResult.segmentedImageUrl}
+        selectedReferences={selectedReferenceImages}
+        segmentedParts={segmentedResult.segmentedParts}
+        onBack={handleBackFromStitching}
+      />
     );
   }
 
@@ -464,103 +539,102 @@ const ApplyModification: React.FC = () => {
           {!showResults ? (
             // Upload and Detection Section
             <>
-        {/* Upload Section */}
+              {/* Upload Section */}
               <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Upload Car Image</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">Upload Car Image</h2>
 
-            <div
-              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              onClick={triggerFileInput}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-
-              {previewUrl ? (
-                <div className="relative">
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    className="max-h-64 mx-auto rounded-lg shadow-md"
+                <div
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onClick={triggerFileInput}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
                   />
-                  <button
+
+                  {previewUrl ? (
+                    <div className="relative">
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        className="max-h-64 mx-auto rounded-lg shadow-md"
+                      />
+                      <button
                         onClick={handleReset}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
-                <div>
-                  <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                  </svg>
-                  <p className="text-gray-600 mb-2">Click to upload or drag and drop</p>
-                  <p className="text-sm text-gray-500">PNG, JPG, GIF up to 10MB</p>
-                </div>
-              )}
+                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <p className="text-gray-600 mb-2">Click to upload or drag and drop</p>
+                      <p className="text-sm text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Analysis Results */}
               {(classificationResult || detectedParts.length > 0) && (
                 <div className="mt-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Analysis Results</h2>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Analysis Results</h2>
 
-            {/* Classification Result */}
-            {classificationResult && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                <h3 className="font-semibold text-green-800 mb-2">Classification Result</h3>
-                <p className="text-green-700">{classificationResult}</p>
-              </div>
-            )}
+                  {/* Classification Result */}
+                  {classificationResult && (
+                    <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <h3 className="font-semibold text-green-800 mb-2">Classification Result</h3>
+                      <p className="text-green-700">{classificationResult}</p>
+                    </div>
+                  )}
 
-            {/* Detected Parts */}
-            {showPartSelection && detectedParts.length > 0 && (
-              <div className="mb-6">
-                <h3 className="font-semibold text-gray-900 mb-3">Detected Car Parts</h3>
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  {detectedParts.map((part, index) => (
-                    <label
+                  {/* Detected Parts */}
+                  {showPartSelection && detectedParts.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="font-semibold text-gray-900 mb-3">Detected Car Parts</h3>
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        {getUniqueParts(detectedParts).map((part: PartDetection, index: number) => (
+                          <label
                             key={`${part.class_name}-${index}`}
-                      className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
-                    >
-                      <input
-                        type="checkbox"
+                            className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
+                          >
+                            <input
+                              type="checkbox"
                               checked={selectedParts.includes(part.class_name)}
                               onChange={() => handlePartSelection(part.class_name)}
                               className="mr-3 h-4 w-4"
                             />
                             <div className="flex items-center flex-1">
-                        <div
-                          className="w-4 h-4 rounded-full mr-2"
+                              <div
+                                className="w-4 h-4 rounded-full mr-2"
                                 style={{ backgroundColor: part.color || `hsl(${(index * 137.5) % 360}, 70%, 50%)` }}
-                        ></div>
+                              ></div>
                               <span className="text-sm font-medium flex-1">{part.class_name}</span>
-                        <span className="text-xs text-gray-500 ml-2">
-                          ({(part.confidence * 100).toFixed(1)}%)
-                        </span>
+                              <span className="text-xs text-gray-500 ml-2">
+                                ({(part.confidence * 100).toFixed(1)}%)
+                              </span>
+                            </div>
+                          </label>
+                        ))}
                       </div>
-                    </label>
-                  ))}
-                </div>
 
-                <button
-                  onClick={segmentSelectedParts}
-                  disabled={selectedParts.length === 0 || isSegmenting}
-                        className={`w-full py-2 px-4 rounded-lg transition-colors ${
-                          isSegmenting || selectedParts.length === 0
-                            ? 'bg-gray-400 cursor-not-allowed opacity-75' 
+                      <button
+                        onClick={segmentSelectedParts}
+                        disabled={selectedParts.length === 0 || isSegmenting}
+                        className={`w-full py-2 px-4 rounded-lg transition-colors ${isSegmenting || selectedParts.length === 0
+                            ? 'bg-gray-400 cursor-not-allowed opacity-75'
                             : 'bg-blue-600 hover:bg-blue-700 text-white'
-                        }`}
+                          }`}
                         style={{ pointerEvents: isSegmenting ? 'none' : 'auto' }}
                       >
                         {isSegmenting ? (
@@ -571,9 +645,9 @@ const ApplyModification: React.FC = () => {
                         ) : (
                           `Segment Selected Parts (${selectedParts.length})`
                         )}
-                </button>
-              </div>
-            )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -631,8 +705,15 @@ const ApplyModification: React.FC = () => {
                     </h2>
                     {segmentedResult.segmentedParts.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {segmentedResult.segmentedParts.map((part, index) => (
-                          <div key={`${part.class_name}-${index}`} className="space-y-2">
+                        {segmentedResult.segmentedParts.map((part: SegmentedPart, index: number) => (
+                          <div key={index} className="bg-white rounded-lg shadow p-4 space-y-4">
+                            <div className="flex justify-between items-center">
+                              <h3 className="text-lg font-semibold text-gray-900">{part.class_name}</h3>
+                              <span className="px-2 py-1 text-sm font-medium text-blue-700 bg-blue-100 rounded-full">
+                                {Math.round(part.confidence * 100)}% confidence
+                              </span>
+                            </div>
+
                             <div className="relative aspect-square w-full overflow-hidden rounded-lg border bg-gray-50">
                               <Image
                                 src={part.segmented_image_path}
@@ -640,16 +721,22 @@ const ApplyModification: React.FC = () => {
                                 fill
                                 className="object-contain"
                                 onError={(e) => {
-                                  console.error(`Failed to load image for ${part.class_name}:`, e);
+                                  console.error(`Failed to load segmented image for ${part.class_name}:`, e);
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBsb2FkIGVycm9yPC90ZXh0Pjwvc3ZnPg==';
                                 }}
                               />
                             </div>
-                            <div className="p-4 bg-gray-50 rounded-lg">
-                              <h3 className="font-semibold capitalize">{part.class_name}</h3>
-                              <p className="text-sm text-gray-600">
-                                Confidence: {(part.confidence * 100).toFixed(1)}%
-                              </p>
-                            </div>
+
+
+                          
+                              <ReferenceImages
+                                className={part.class_name}
+                                selectedImage={selectedReferenceImages.find(img => img.className === part.class_name)?.imagePath || null}
+                                onImageSelect={(imagePath) => handleReferenceImageSelect(part.class_name, imagePath)}
+                              />
+                          
+
                           </div>
                         ))}
                       </div>
@@ -661,10 +748,27 @@ const ApplyModification: React.FC = () => {
                   </div>
 
                   {/* Reset Button */}
-                  <div className="flex justify-center">
+                  <div className="flex justify-end space-x-4 mt-6">
                     <button
-                      onClick={handleReset}
-                      className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                      onClick={handleStitching}
+                      disabled={selectedReferenceImages.length === 0}
+                      className={`px-4 py-2 rounded-md text-white font-medium ${selectedReferenceImages.length === 0
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-green-600 hover:bg-green-700'
+                        }`}
+                    >
+                      Stitching
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowResults(false);
+                        setSelectedParts([]);
+                        setDetectedParts([]);
+                        setSegmentedResult(null);
+                        setSelectedReferenceImages([]);
+                        setShowStitching(false);
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
                     >
                       Start New Analysis
                     </button>

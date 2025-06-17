@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { Schema } from 'mongoose';
 
 export type InventoryItem = {
+  _id: any;
   id: string;
   name: string;
   quantity: number;

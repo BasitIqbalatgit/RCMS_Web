@@ -14,6 +14,10 @@ interface ResponseData {
         confidence: number;
         segmented_image_path: string;
         mask_path: string;
+        x: number;
+        y: number;
+        w: number;
+        h: number;
     }[];
     error?: string;
 }
@@ -134,16 +138,30 @@ export async function POST(req: NextRequest): Promise<NextResponse<ResponseData>
         const resultsData = await fs.readFile(resultsPath, 'utf-8');
         const segmentedParts = JSON.parse(resultsData);
 
-        // Convert absolute paths to relative URLs
+        // Convert absolute paths to relative URLs and include coordinates
         const responseData = {
             success: true,
             timestamp: timestamp.toString(),
             segmentedImageUrl: `/segments/${timestamp}/modified.jpg`,
-            segmentedParts: segmentedParts.map((part: any) => ({
-                ...part,
-                segmented_image_path: `/segments/${timestamp}/${path.basename(part.segmented_image_path)}`,
-                mask_path: `/segments/${timestamp}/${path.basename(part.mask_path)}`
-            }))
+            segmentedParts: segmentedParts.map((part: any) => {
+                // Extract coordinates from the original detection
+                const originalDetection = partsToSegment.find(p => p.class_name === part.class_name);
+                if (!originalDetection) {
+                    console.error('Could not find original detection for part:', part.class_name);
+                    return null;
+                }
+
+                const [x, y, w, h] = originalDetection.bbox;
+                return {
+                    ...part,
+                    x,
+                    y,
+                    w,
+                    h,
+                    segmented_image_path: `/segments/${timestamp}/${path.basename(part.segmented_image_path)}`,
+                    mask_path: `/segments/${timestamp}/${path.basename(part.mask_path)}`
+                };
+            }).filter(Boolean) // Remove any null entries
         };
 
         console.log('Sending response data:', {
@@ -154,6 +172,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<ResponseData>
             segmentedParts: responseData.segmentedParts.map((part: any) => ({
                 class_name: part.class_name,
                 confidence: part.confidence,
+                x: part.x,
+                y: part.y,
+                w: part.w,
+                h: part.h,
                 segmented_image_path: part.segmented_image_path,
                 mask_path: part.mask_path
             }))
