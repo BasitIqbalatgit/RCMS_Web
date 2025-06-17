@@ -1,0 +1,54 @@
+{
+  "segmentedImage": "/segments/1750151241066/modified.jpg",
+  "segmentedParts": [
+    {
+      "class_name": "Headlight - -L-",
+      "confidence": 0.6111072897911072,
+      "bbox": [
+        140.73422241210938,
+        74.65431213378906,
+        180.0629119873047,
+        99.58917236328125
+      ],
+      "center_point": [
+        160,
+        87
+      ],
+      "segmented_image_path": "/segments/1750151241066/Headlight - -L-_0_0.61.jpg",
+      "mask_path": "/segments/1750151241066/Headlight - -L-_0_mask.jpg",
+      "mask_area": 564,
+      "x": 140.73422241210938,
+      "y": 74.65431213378906,
+      "w": 180.0629119873047,
+      "h": 99.58917236328125
+    },
+    {
+      "class_name": "Headlight - -R-",
+      "confidence": 0.5458242893218994,
+      "bbox": [
+        14.886919021606445,
+        74.46817779541016,
+        52.93168640136719,
+        99.34805297851562
+      ],
+      "center_point": [
+        33,
+        86
+      ],
+      "segmented_image_path": "/segments/1750151241066/Headlight - -R-_1_0.55.jpg",
+      "mask_path": "/segments/1750151241066/Headlight - -R-_1_mask.jpg",
+      "mask_area": 558,
+      "x": 14.886919021606445,
+      "y": 74.46817779541016,
+      "w": 52.93168640136719,
+      "h": 99.34805297851562
+    }
+  ],
+  "references": [
+    {
+      "className": "Headlight - -R-",
+      "imagePath": "/Headlight - -R-/2.png"
+    }
+  ],
+  "outputDir": "/stitching_results/4040a243-6ad1-4c64-aae8-f70ea7c35f0b"
+}

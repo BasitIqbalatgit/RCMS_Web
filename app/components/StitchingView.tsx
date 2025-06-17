@@ -121,10 +121,17 @@ export default function StitchingView({
         if (!response.ok) {
           let errorMessage = 'Stitching failed';
           try {
-            const errorData = JSON.parse(responseText);
-            errorMessage = errorData.error || errorMessage;
+            // Try to parse as JSON first
+            if (responseText.trim()) {
+              const errorData = JSON.parse(responseText);
+              errorMessage = errorData.error || errorData.message || errorMessage;
+            } else {
+              errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            }
           } catch (e) {
             console.error('Error parsing error response:', e);
+            // If JSON parsing fails, use the raw text or status
+            errorMessage = responseText.trim() || `HTTP ${response.status}: ${response.statusText}`;
           }
           throw new Error(errorMessage);
         }
@@ -132,10 +139,14 @@ export default function StitchingView({
         // Parse the successful response
         let data;
         try {
+          if (!responseText.trim()) {
+            throw new Error('Empty response from server');
+          }
           data = JSON.parse(responseText);
         } catch (e) {
           console.error('Error parsing success response:', e);
-          throw new Error('Invalid response from server');
+          console.error('Raw response text:', responseText);
+          throw new Error('Invalid response from server - expected JSON');
         }
         
         if (data.success) {

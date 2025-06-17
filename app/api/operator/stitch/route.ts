@@ -124,7 +124,7 @@ export async function POST(request: Request) {
     // Run stitching script
     const scriptPath = path.join(process.cwd(), 'stitching.py');
     
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const process = spawn('python', [scriptPath, inputPath]);
       let output = '';
       let error = '';
@@ -140,9 +140,13 @@ export async function POST(request: Request) {
       });
 
       process.on('close', (code) => {
+        console.log(`Stitching process exited with code: ${code}`);
+        console.log(`Process output: ${output}`);
+        console.log(`Process error: ${error}`);
+        
         if (code !== 0) {
           console.error('Stitching failed:', error);
-          reject(NextResponse.json(
+          resolve(NextResponse.json(
             { success: false, error: error || 'Stitching process failed' },
             { status: 500 }
           ));
@@ -151,16 +155,31 @@ export async function POST(request: Request) {
 
         try {
           const outputPath = path.join(outputDir, 'output.json');
-          const result = JSON.parse(fs.readFileSync(outputPath, 'utf-8'));
+          console.log(`Looking for output file at: ${outputPath}`);
+          
+          if (!fs.existsSync(outputPath)) {
+            console.error('Output file does not exist');
+            resolve(NextResponse.json(
+              { success: false, error: 'Stitching output file not found' },
+              { status: 500 }
+            ));
+            return;
+          }
+          
+          const outputContent = fs.readFileSync(outputPath, 'utf-8');
+          console.log(`Output file content: ${outputContent}`);
+          
+          const result = JSON.parse(outputContent);
 
           if (!result.success) {
-            reject(NextResponse.json(
+            resolve(NextResponse.json(
               { success: false, error: result.error || 'Stitching failed' },
               { status: 500 }
             ));
             return;
           }
 
+          console.log(`Stitching successful, returning: ${JSON.stringify(result)}`);
           resolve(NextResponse.json({
             success: true,
             stitchedImageUrl: result.stitchedImageUrl,
@@ -168,7 +187,7 @@ export async function POST(request: Request) {
           }));
         } catch (error) {
           console.error('Error reading result:', error);
-          reject(NextResponse.json(
+          resolve(NextResponse.json(
             { success: false, error: 'Failed to process results' },
             { status: 500 }
           ));

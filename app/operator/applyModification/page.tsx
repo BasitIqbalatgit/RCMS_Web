@@ -78,30 +78,40 @@ const ApplyModification: React.FC = () => {
       if (status === 'authenticated' && session?.user?.id) {
         try {
           setIsLoadingAdmin(true);
+          console.log('Fetching admin data for user:', session.user.id, 'role:', session.user.role);
 
           // If user is operator, get adminId first
           if (session.user.role === UserRole.OPERATOR) {
+            console.log('User is operator, fetching operator data...');
             const operatorResponse = await fetch(`/api/operator/${session.user.id}`);
             if (!operatorResponse.ok) {
               throw new Error('Failed to fetch operator data');
             }
             const operatorData = await operatorResponse.json();
+            console.log('Operator data received:', operatorData);
 
             if (operatorData.adminId) {
+              console.log('Admin ID found:', operatorData.adminId, 'fetching admin data...');
               const adminResponse = await fetch(`/api/admins/${operatorData.adminId}`);
               if (!adminResponse.ok) {
                 throw new Error('Failed to fetch admin data');
               }
               const adminInfo = await adminResponse.json();
+              console.log('Admin data received:', adminInfo);
               setAdminData(adminInfo);
+            } else {
+              console.error('No adminId found in operator data');
+              setError('No admin associated with this operator account');
             }
           } else if (session.user.role === UserRole.ADMIN) {
+            console.log('User is admin, fetching own data...');
             // If user is admin, fetch their own data
             const adminResponse = await fetch(`/api/admins/${session.user.id}`);
             if (!adminResponse.ok) {
               throw new Error('Failed to fetch admin data');
             }
             const adminInfo = await adminResponse.json();
+            console.log('Admin data received:', adminInfo);
             setAdminData(adminInfo);
           }
         } catch (err) {
@@ -527,9 +537,20 @@ const ApplyModification: React.FC = () => {
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500">Available Credits</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {adminData?.creditBalance || 0}
-              </p>
+              {isLoadingAdmin ? (
+                <div className="flex items-center justify-end">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                  <span className="text-sm text-gray-500">Loading...</span>
+                </div>
+              ) : adminData ? (
+                <p className="text-2xl font-bold text-blue-600">
+                  {adminData.creditBalance}
+                </p>
+              ) : (
+                <p className="text-lg font-medium text-red-600">
+                  Error loading credits
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -539,98 +560,98 @@ const ApplyModification: React.FC = () => {
           {!showResults ? (
             // Upload and Detection Section
             <>
-              {/* Upload Section */}
+        {/* Upload Section */}
               <div className="mb-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Upload Car Image</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Upload Car Image</h2>
 
-                <div
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
-                  onDragOver={handleDragOver}
-                  onDrop={handleDrop}
-                  onClick={triggerFileInput}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
+            <div
+              className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onClick={triggerFileInput}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="hidden"
+              />
+
+              {previewUrl ? (
+                <div className="relative">
+                  <img
+                    src={previewUrl}
+                    alt="Preview"
+                    className="max-h-64 mx-auto rounded-lg shadow-md"
                   />
-
-                  {previewUrl ? (
-                    <div className="relative">
-                      <img
-                        src={previewUrl}
-                        alt="Preview"
-                        className="max-h-64 mx-auto rounded-lg shadow-md"
-                      />
-                      <button
+                  <button
                         onClick={handleReset}
-                        className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                      </svg>
-                      <p className="text-gray-600 mb-2">Click to upload or drag and drop</p>
-                      <p className="text-sm text-gray-500">PNG, JPG, GIF up to 10MB</p>
-                    </div>
-                  )}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <p className="text-gray-600 mb-2">Click to upload or drag and drop</p>
+                  <p className="text-sm text-gray-500">PNG, JPG, GIF up to 10MB</p>
+                </div>
+              )}
                 </div>
               </div>
 
               {/* Analysis Results */}
               {(classificationResult || detectedParts.length > 0) && (
                 <div className="mt-8">
-                  <h2 className="text-xl font-semibold text-gray-900 mb-4">Analysis Results</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Analysis Results</h2>
 
-                  {/* Classification Result */}
-                  {classificationResult && (
-                    <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <h3 className="font-semibold text-green-800 mb-2">Classification Result</h3>
-                      <p className="text-green-700">{classificationResult}</p>
-                    </div>
-                  )}
+            {/* Classification Result */}
+            {classificationResult && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <h3 className="font-semibold text-green-800 mb-2">Classification Result</h3>
+                <p className="text-green-700">{classificationResult}</p>
+              </div>
+            )}
 
-                  {/* Detected Parts */}
-                  {showPartSelection && detectedParts.length > 0 && (
-                    <div className="mb-6">
-                      <h3 className="font-semibold text-gray-900 mb-3">Detected Car Parts</h3>
-                      <div className="grid grid-cols-2 gap-2 mb-4">
+            {/* Detected Parts */}
+            {showPartSelection && detectedParts.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3">Detected Car Parts</h3>
+                <div className="grid grid-cols-2 gap-2 mb-4">
                         {getUniqueParts(detectedParts).map((part: PartDetection, index: number) => (
-                          <label
+                    <label
                             key={`${part.class_name}-${index}`}
-                            className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
-                          >
-                            <input
-                              type="checkbox"
+                      className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50"
+                    >
+                      <input
+                        type="checkbox"
                               checked={selectedParts.includes(part.class_name)}
                               onChange={() => handlePartSelection(part.class_name)}
                               className="mr-3 h-4 w-4"
                             />
                             <div className="flex items-center flex-1">
-                              <div
-                                className="w-4 h-4 rounded-full mr-2"
+                        <div
+                          className="w-4 h-4 rounded-full mr-2"
                                 style={{ backgroundColor: part.color || `hsl(${(index * 137.5) % 360}, 70%, 50%)` }}
-                              ></div>
+                        ></div>
                               <span className="text-sm font-medium flex-1">{part.class_name}</span>
-                              <span className="text-xs text-gray-500 ml-2">
-                                ({(part.confidence * 100).toFixed(1)}%)
-                              </span>
-                            </div>
-                          </label>
-                        ))}
+                        <span className="text-xs text-gray-500 ml-2">
+                          ({(part.confidence * 100).toFixed(1)}%)
+                        </span>
                       </div>
+                    </label>
+                  ))}
+                </div>
 
-                      <button
-                        onClick={segmentSelectedParts}
-                        disabled={selectedParts.length === 0 || isSegmenting}
+                <button
+                  onClick={segmentSelectedParts}
+                  disabled={selectedParts.length === 0 || isSegmenting}
                         className={`w-full py-2 px-4 rounded-lg transition-colors ${isSegmenting || selectedParts.length === 0
                             ? 'bg-gray-400 cursor-not-allowed opacity-75'
                             : 'bg-blue-600 hover:bg-blue-700 text-white'
@@ -645,9 +666,9 @@ const ApplyModification: React.FC = () => {
                         ) : (
                           `Segment Selected Parts (${selectedParts.length})`
                         )}
-                      </button>
-                    </div>
-                  )}
+                </button>
+              </div>
+            )}
                 </div>
               )}
             </>
@@ -684,7 +705,7 @@ const ApplyModification: React.FC = () => {
                 <div className="space-y-8">
                   {/* Modified Image */}
                   <div>
-                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Modified Image</h2>
+                    <h2 className="text-xl font-semibold text-gray-900 mb-4">Segmented Image</h2>
                     <div className="relative aspect-video w-full overflow-hidden rounded-lg border">
                       <Image
                         src={segmentedResult.segmentedImageUrl}
@@ -723,20 +744,18 @@ const ApplyModification: React.FC = () => {
                                 onError={(e) => {
                                   console.error(`Failed to load segmented image for ${part.class_name}:`, e);
                                   const target = e.target as HTMLImageElement;
-                                  target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBsb2FkIGVycm9yPC90ZXh0Pjwvc3ZnPg==';
+                                   target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTYiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbWFnZSBsb2FkIGVycm9yPC90ZXh0Pjwvc3ZnPg==';
                                 }}
                               />
                             </div>
 
-
-                          
-                              <ReferenceImages
+                            
+                              < ReferenceImages 
                                 className={part.class_name}
                                 selectedImage={selectedReferenceImages.find(img => img.className === part.class_name)?.imagePath || null}
                                 onImageSelect={(imagePath) => handleReferenceImageSelect(part.class_name, imagePath)}
                               />
-                          
-
+                            
                           </div>
                         ))}
                       </div>
@@ -771,11 +790,11 @@ const ApplyModification: React.FC = () => {
                       className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
                     >
                       Start New Analysis
-                    </button>
-                  </div>
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
           )}
         </div>
 

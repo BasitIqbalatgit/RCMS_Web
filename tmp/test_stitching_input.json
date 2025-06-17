@@ -1,0 +1,36 @@
+{
+  "segmented_image_path": "public/segments/1750144679677/modified.jpg",
+  "segmented_parts": [
+    {
+      "class_name": "Headlight - -L-",
+      "confidence": 0.6111072897911072,
+      "x": 140.73422241210938,
+      "y": 74.65431213378906,
+      "w": 180.0629119873047,
+      "h": 99.58917236328125,
+      "segmented_image_path": "/segments/1750144679677/Headlight - -L-_0_0.61.jpg",
+      "mask_path": "/segments/1750144679677/Headlight - -L-_0_mask.jpg"
+    },
+    {
+      "class_name": "Headlight - -R-",
+      "confidence": 0.5458242893218994,
+      "x": 14.886919021606445,
+      "y": 74.46817779541016,
+      "w": 52.93168640136719,
+      "h": 99.34805297851562,
+      "segmented_image_path": "/segments/1750144679677/Headlight - -R-_1_0.55.jpg",
+      "mask_path": "/segments/1750144679677/Headlight - -R-_1_mask.jpg"
+    }
+  ],
+  "references": [
+    {
+      "className": "Headlight - -R-",
+      "imagePath": "public/Headlight - -R-/1.png"
+    },
+    {
+      "className": "Headlight - -L-",
+      "imagePath": "public/Headlight - -L-/3.png"
+    }
+  ],
+  "output_dir": "public/stitching_results/test_session"
+}

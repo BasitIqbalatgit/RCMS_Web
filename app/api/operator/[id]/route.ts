@@ -4,13 +4,13 @@ import connectDB from '@/lib/db/mongodb';
 import bcrypt from 'bcryptjs';
 
 export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
 
-    const operatorId = params.id;
+    const { id: operatorId } = await params;
 
     // Validate that this is an operator record
     const operator = await User.findOne({
@@ -25,11 +25,18 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(operator);
+    return NextResponse.json({
+      id: operator._id,
+      email: operator.email,
+      name: operator.name,
+      role: operator.role,
+      adminId: operator.adminId,
+      isActive: operator.isActive
+    });
   } catch (error) {
     console.error('Error fetching operator:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch operator' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

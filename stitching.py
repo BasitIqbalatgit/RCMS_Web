@@ -1,14 +1,14 @@
+import cv2
+import numpy as np
 import json
 import sys
 import os
-import cv2
-import numpy as np
 
 def load_image(path):
     if path.startswith('/'):
         path = path[1:]
     abs_path = os.path.join(os.getcwd(), 'public', path)
-    img = cv2.imread(abs_path)
+    img = cv2.imread(abs_path, cv2.IMREAD_UNCHANGED)
     if img is None:
         raise ValueError(f"Could not load image: {abs_path}")
     if img.size == 0:
@@ -19,223 +19,213 @@ def get_segmented_part_info(segmentedParts, className):
     """Get the coordinates and dimensions from the segmented part."""
     for part in segmentedParts:
         if part['class_name'] == className:
-            # Extract coordinates from the segmented part
             return {
                 'x': part['x'],
                 'y': part['y'],
                 'w': part['w'],
                 'h': part['h'],
-                'angle': part.get('angle', 0)  # Default to 0 if angle not provided
+                'angle': part.get('angle', 0)
             }
     return None
 
-def analyze_segmented_part(base_img, x, y, w, h):
-    """Analyze the segmented part in the base image to get its properties."""
+def resize_with_aspect_ratio(image, target_width, target_height):
+    """Resize image while preserving aspect ratio, centering it in the target dimensions."""
+    h, w = image.shape[:2]
+    aspect = w / h
+    target_aspect = target_width / target_height
+    
+    if aspect > target_aspect:
+        new_width = target_width
+        new_height = int(target_width / aspect)
+    else:
+        new_height = target_height
+        new_width = int(target_height * aspect)
+    
+    resized = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
+    canvas = np.zeros((target_height, target_width, image.shape[2]), dtype=np.uint8)
+    x_offset = (target_width - new_width) // 2
+    y_offset = (target_height - new_height) // 2
+    canvas[y_offset:y_offset+new_height, x_offset:x_offset+new_width] = resized
+    
+    print(f"Resized image: original {w}x{h}, new {new_width}x{new_height}, placed at offsets ({x_offset}, {y_offset})")
+    return canvas
+
+def create_foreground_mask(image):
+    """Create a foreground mask using GrabCut and HSV thresholding."""
     try:
-        # Extract the ROI from base image
-        roi = base_img[int(y):int(y+h), int(x):int(x+w)]
-        if roi.size == 0:
-            raise ValueError("Empty ROI")
-            
-        # Convert to grayscale for analysis
-        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        # Initialize GrabCut
+        mask = np.zeros(image.shape[:2], np.uint8)
+        bgd_model = np.zeros((1, 65), np.float64)
+        fgd_model = np.zeros((1, 65), np.float64)
+        rect = (5, 5, image.shape[1]-5, image.shape[0]-5)
+        cv2.grabCut(image, mask, rect, bgd_model, fgd_model, 5, cv2.GC_INIT_WITH_RECT)
+        grabcut_mask = np.where((mask == 2) | (mask == 0), 0, 1).astype(np.uint8)
         
-        # Find contours to get the actual part shape
-        _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # HSV-based mask for white/light gray backgrounds
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        white_lower = np.array([0, 0, 200])
+        white_upper = np.array([180, 30, 255])
+        white_mask = cv2.inRange(hsv, white_lower, white_upper)
+        light_gray_lower = np.array([0, 0, 180])
+        light_gray_upper = np.array([180, 20, 220])
+        light_gray_mask = cv2.inRange(hsv, light_gray_lower, light_gray_upper)
+        background_mask = cv2.bitwise_or(white_mask, light_gray_mask)
+        hsv_mask = cv2.bitwise_not(background_mask) // 255
         
-        if not contours:
-            raise ValueError("No contours found in segmented part")
-            
-        # Get the largest contour
-        largest_contour = max(contours, key=cv2.contourArea)
+        # Combine masks
+        combined_mask = cv2.bitwise_and(grabcut_mask, hsv_mask)
         
-        # Get rotated rectangle
-        rect = cv2.minAreaRect(largest_contour)
-        box = cv2.boxPoints(rect)
-        box = np.array(box, dtype=np.int32)
+        # Clean up mask
+        kernel = np.ones((3,3), np.uint8)
+        combined_mask = cv2.morphologyEx(combined_mask, cv2.MORPH_CLOSE, kernel)
+        combined_mask = cv2.morphologyEx(combined_mask, cv2.MORPH_OPEN, kernel)
+        combined_mask = cv2.GaussianBlur(combined_mask, (5, 5), 0)
         
-        # Get angle and dimensions
-        angle = rect[2]
-        width = rect[1][0]
-        height = rect[1][1]
-        
-        # Adjust angle to be between -90 and 0 degrees
-        if width < height:
-            angle = angle + 90
-            width, height = height, width
-            
-        print(f"Analyzed part properties:")
-        print(f"  Original dimensions: {w}x{h}")
-        print(f"  Actual dimensions: {width:.1f}x{height:.1f}")
-        print(f"  Angle: {angle:.1f} degrees")
-        print(f"  Box points: {box.tolist()}")
-        
-        return {
-            'width': width,
-            'height': height,
-            'angle': angle,
-            'contour': largest_contour,
-            'box': box
-        }
-        
+        return combined_mask
     except Exception as e:
-        print(f"Error analyzing segmented part: {str(e)}")
-        print(f"ROI shape: {roi.shape if 'roi' in locals() else 'Not created'}")
-        print(f"Binary shape: {binary.shape if 'binary' in locals() else 'Not created'}")
-        print(f"Number of contours: {len(contours) if 'contours' in locals() else 'Not found'}")
+        print(f"Error creating foreground mask: {str(e)}")
         raise
 
-def prepare_reference_image(ref_img, target_width, target_height, angle):
-    """Prepare reference image to fit within the segmented part coordinates while maintaining aspect ratio."""
-    try:
-        ref_height, ref_width = ref_img.shape[:2]
-        
-        # Calculate aspect ratios
-        ref_aspect = ref_width / ref_height
-        target_aspect = target_width / target_height
-        
-        # Calculate scaling to fit within target dimensions while preserving aspect ratio
-        if ref_aspect > target_aspect:
-            # Reference is wider than target, fit to width
-            scale = target_width / ref_width
-            new_width = target_width
-            new_height = int(ref_height * scale)
-        else:
-            # Reference is taller than target, fit to height
-            scale = target_height / ref_height
-            new_height = target_height
-            new_width = int(ref_width * scale)
-        
-        # Resize image maintaining aspect ratio
-        resized = cv2.resize(ref_img, (new_width, new_height), interpolation=cv2.INTER_AREA)
-        
-        # Create canvas of target size
-        canvas = np.zeros((target_height, target_width, 3), dtype=np.uint8)
-        
-        # Calculate centering offsets
-        x_offset = (target_width - new_width) // 2
-        y_offset = (target_height - new_height) // 2
-        
-        # Place resized image in center of canvas
-        canvas[y_offset:y_offset+new_height, x_offset:x_offset+new_width] = resized
-        
-        # Apply rotation if needed
-        if abs(angle) > 1:  # Only rotate if angle is meaningful
-            center = (target_width // 2, target_height // 2)
-            rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-            canvas = cv2.warpAffine(canvas, rotation_matrix, (target_width, target_height))
-        
-        print(f"Reference image prepared:")
-        print(f"  Original size: {ref_width}x{ref_height}")
-        print(f"  Scaled size: {new_width}x{new_height}")
-        print(f"  Target size: {target_width}x{target_height}")
-        print(f"  Scale factor: {scale:.3f}")
-        print(f"  Centering offsets: ({x_offset}, {y_offset})")
-        print(f"  Rotation angle: {angle:.1f} degrees")
-        
-        return canvas
-        
-    except Exception as e:
-        print(f"Error preparing reference image: {str(e)}")
-        raise
-
-def stitch_part(base_img, reference_img, part_info):
+def stitch_part_with_bounding_box_fit(base_img, reference_img, part_info, output_dir, class_name, scale_factor=0.5, target_aspect=4/3):
+    """
+    Place reference image using exact bounding box dimensions from segmentation coordinates.
+    Uses the width and height from the bounding box, scaled by scale_factor, and adjusts to match target_aspect.
+    """
     try:
         base_height, base_width = base_img.shape[:2]
         ref_height, ref_width = reference_img.shape[:2]
         
-        # Extract exact coordinates and dimensions from segmented part
-        x = float(part_info['x'])
-        y = float(part_info['y'])
-        w = float(part_info['w'])
-        h = float(part_info['h'])
+        # Extract exact bounding box coordinates and dimensions from segmented part
+        bbox_x = float(part_info['x'])
+        bbox_y = float(part_info['y'])
+        bbox_width = float(part_info['w'])
+        bbox_height = float(part_info['h'])
         
-        # Calculate target dimensions
-        target_width = int(w)
-        target_height = int(h)
-        
-        print(f"Stitching dimensions:")
+        print(f"Bounding Box Analysis:")
         print(f"  Base image: {base_width}x{base_height}")
         print(f"  Reference image: {ref_width}x{ref_height}")
-        print(f"  Segmented part: {w}x{h} at ({x}, {y})")
-        print(f"  Target size: {target_width}x{target_height}")
+        print(f"  Bounding box: x={bbox_x}, y={bbox_y}, w={bbox_width}, h={bbox_height}")
         
-        # Prepare reference image to fit within segmented part
-        prepared_ref = prepare_reference_image(
-            reference_img, 
-            target_width, 
-            target_height,
-            part_info.get('angle', 0)
-        )
+        # Calculate the scaled bounding box dimensions
+        target_width = int(bbox_width * scale_factor)
+        target_height = int(bbox_height * scale_factor)
         
-        # Ensure coordinates are within bounds
-        x = min(max(0, int(x)), base_width - target_width)
-        y = min(max(0, int(y)), base_height - target_height)
+        # Adjust dimensions to match the target aspect ratio (width / height)
+        if target_width / target_height > target_aspect:
+            # Too wide: reduce width to match aspect ratio
+            target_width = int(target_height * target_aspect)
+        else:
+            # Too tall: reduce height to match aspect ratio
+            target_height = int(target_width / target_aspect)
         
-        # Create ROI with exact dimensions
-        roi = base_img[y:y+target_height, x:x+target_width]
-        if roi.size == 0:
-            raise ValueError(f"ROI is empty at ({x}, {y}) with size {target_width}x{target_height}")
+        print(f"  Target bounding box (scaled by {scale_factor}, adjusted to aspect {target_aspect}): {target_width}x{target_height}")
         
-        # Create a mask for blending
-        mask = np.zeros((target_height, target_width), dtype=np.float32)
-        cv2.rectangle(mask, (0, 0), (target_width, target_height), 1.0, -1)
-        mask = cv2.GaussianBlur(mask, (15, 15), 10)  # Larger kernel for smoother edges
+        # Check if bounding box fits within image bounds
+        if bbox_x + target_width > base_width:
+            print(f"  Warning: Scaled bounding box extends beyond image width")
+            # Adjust x to keep bounding box within image
+            adjusted_x = max(0, base_width - target_width)
+            print(f"  Adjusted x from {bbox_x} to {adjusted_x}")
+        else:
+            adjusted_x = int(bbox_x)
+            
+        if bbox_y + target_height > base_height:
+            print(f"  Warning: Scaled bounding box extends beyond image height")
+            # Adjust y to keep bounding box within image
+            adjusted_y = max(0, base_height - target_height)
+            print(f"  Adjusted y from {bbox_y} to {adjusted_y}")
+        else:
+            adjusted_y = int(bbox_y)
         
-        # Convert images to float32 for blending
-        roi_float = roi.astype(np.float32)
-        ref_float = prepared_ref.astype(np.float32)
+        # Ensure coordinates are non-negative
+        adjusted_x = max(0, adjusted_x)
+        adjusted_y = max(0, adjusted_y)
         
-        # Blend using the mask
-        blended = np.zeros_like(roi_float)
-        for c in range(3):  # Blend each channel separately
-            blended[..., c] = roi_float[..., c] * (1 - mask) + ref_float[..., c] * mask
+        # Apply position adjustments based on part class
+        if class_name == "Headlight - -L-":
+            # Move left headlight more to the left
+            adjusted_x = max(0, adjusted_x - 7)  # Move 20 pixels left
+            adjusted_y = max(0, adjusted_y - 9)  # Move 10 pixels up
+            print(f"  Adjusted left headlight position: moved 20px left")
+        elif class_name == "Headlight - -R-":
+            # Move right headlight more to the right
+            adjusted_x = min(base_width - target_width, adjusted_x + 0)  # Move 15 pixels right
+            adjusted_y = max(0, adjusted_y +4)  # Move 10 pixels up
+            print(f"  Adjusted right headlight position: moved 15px right")
+        
+        print(f"  Final placement: ({adjusted_x}, {adjusted_y}) with scaled bounding box {target_width}x{target_height}")
+        
+        # Create a copy of the base image
+        result_img = base_img.copy()
+        
+        # Step 1: Resize reference image to fit the scaled bounding box dimensions
+        print(f"  Resizing reference image from {ref_width}x{ref_height} to {target_width}x{target_height}")
+        resized_ref = cv2.resize(reference_img, (target_width, target_height), interpolation=cv2.INTER_AREA)
+
+        # Handle transparency: if image has 4 channels (RGBA), use alpha channel for blending
+        if resized_ref.shape[2] == 4:
+            # Extract alpha channel and normalize it
+            alpha = resized_ref[:, :, 3].astype(np.float32) / 255.0
+            # Convert to BGR for processing
+            resized_ref_bgr = cv2.cvtColor(resized_ref, cv2.COLOR_BGRA2BGR)
+            use_alpha_blending = True
+        else:
+            # For 3-channel images, create background removal mask
+            ref_hsv = cv2.cvtColor(resized_ref, cv2.COLOR_BGR2HSV)
+            
+            # Create mask for white/light backgrounds
+            white_lower = np.array([0, 0, 200])
+            white_upper = np.array([180, 30, 255])
+            white_mask = cv2.inRange(ref_hsv, white_lower, white_upper)
+            
+            # Create mask for very light gray backgrounds
+            light_gray_lower = np.array([0, 0, 180])
+            light_gray_upper = np.array([180, 20, 220])
+            light_gray_mask = cv2.inRange(ref_hsv, light_gray_lower, light_gray_upper)
+            
+            # Combine background masks
+            background_mask = cv2.bitwise_or(white_mask, light_gray_mask)
+            
+            # Invert to get foreground mask
+            alpha = cv2.bitwise_not(background_mask).astype(np.float32) / 255.0
+            resized_ref_bgr = resized_ref
+            use_alpha_blending = False
+        
+        # Clean up the alpha mask
+        kernel = np.ones((3,3), np.uint8)
+        alpha = cv2.morphologyEx(alpha, cv2.MORPH_CLOSE, kernel)
+        alpha = cv2.morphologyEx(alpha, cv2.MORPH_OPEN, kernel)
+        
+        # Apply Gaussian blur for smooth edges
+        alpha = cv2.GaussianBlur(alpha, (5, 5), 0)
+        
+        # Convert alpha to 3-channel for blending
+        alpha_3ch = np.stack([alpha, alpha, alpha], axis=2)
+        
+        # Step 3: Extract the bounding box region from base image
+        bbox_region = result_img[adjusted_y:adjusted_y+target_height, adjusted_x:adjusted_x+target_width]
+        
+        # Step 4: Blend the reference image into the bounding box region
+        bbox_region_float = bbox_region.astype(np.float32)
+        ref_region_float = resized_ref_bgr.astype(np.float32)
+        
+        # Blend using the alpha mask
+        blended = bbox_region_float * (1 - alpha_3ch) + ref_region_float * alpha_3ch
         
         # Convert back to uint8 and ensure values are in valid range
         blended = np.clip(blended, 0, 255).astype(np.uint8)
         
-        # Place blended result back into base image
-        base_img[y:y+target_height, x:x+target_width] = blended
+        # Step 5: Place the blended result back into the base image at the exact bounding box coordinates
+        result_img[adjusted_y:adjusted_y+target_height, adjusted_x:adjusted_x+target_width] = blended
         
-        return base_img
+        print(f"  Successfully placed reference image in scaled bounding box with background removal")
+        
+        return result_img
         
     except Exception as e:
-        print(f"Error in stitch_part: {str(e)}")
+        print(f"Error in stitch_part_with_bounding_box_fit: {str(e)}")
         raise
 
-def stitch_images(base_image_path, references, segmented_parts):
-    try:
-        print("Loading base image...")
-        base_img = cv2.imread(base_image_path)
-        if base_img is None:
-            raise ValueError(f"Failed to load base image: {base_image_path}")
-        print(f"Base image loaded. Shape: {base_img.shape}")
-        
-        for ref in references:
-            part_class = ref['className']
-            ref_path = ref['imagePath']
-            
-            part_info = next((p for p in segmented_parts if p['class_name'] == part_class), None)
-            if not part_info:
-                print(f"Warning: No segmented part found for {part_class}")
-                continue
-            
-            print(f"\nProcessing {part_class}...")
-            print(f"Loading reference image: {ref_path}")
-            ref_img = cv2.imread(ref_path)
-            if ref_img is None:
-                raise ValueError(f"Failed to load reference image: {ref_path}")
-            
-            # Stitch the prepared image
-            base_img = stitch_part(base_img, ref_img, part_info)
-            print(f"Successfully stitched {part_class}")
-        
-        return base_img
-    except Exception as e:
-        print(f"\nStitching failed: {str(e)}")
-        raise
-        
 def main():
     try:
         # Read input
@@ -246,68 +236,93 @@ def main():
             data = json.load(f)
         
         # Load base image
-        print("Loading base image...")
+        print("Loading segmented base image...")
         base_img = load_image(data['segmentedImage'])
         print(f"Base image loaded. Shape: {base_img.shape}")
         
-        # Process each reference
+        # Process each reference image
         for ref in data['references']:
             print(f"\nProcessing {ref['className']}...")
             
             # Find matching segmented part
-            segmented_part = None
-            for part in data['segmentedParts']:
-                if part['class_name'] == ref['className']:
-                    segmented_part = part
-                    break
-            
+            segmented_part = get_segmented_part_info(data['segmentedParts'], ref['className'])
             if not segmented_part:
                 print(f"Warning: No segmented part found for {ref['className']}")
                 continue
             
-            # Get coordinates from segmented part
-            info = {
-                'x': segmented_part['x'],
-                'y': segmented_part['y'],
-                'w': segmented_part['w'],
-                'h': segmented_part['h'],
-                'angle': segmented_part.get('angle', 0)
-            }
-            
-            print(f"Loading reference image: {ref['imagePath']}")
+            # Load reference image
             ref_img = load_image(ref['imagePath'])
-            print(f"Reference image loaded. Shape: {ref_img.shape}")
-            print(f"Using segmented part coordinates: {info}")
+            if ref_img is None:
+                print(f"Warning: Could not load reference image for {ref['className']}")
+                continue
             
-            base_img = stitch_part(base_img, ref_img, info)
-            print("Part stitched successfully")
+            print(f"Reference image loaded. Shape: {ref_img.shape}")
+            
+            # Stitch the reference image with scaling
+            # Use adaptive scaling based on part size
+            part_area = segmented_part['w'] * segmented_part['h']
+            base_area = base_img.shape[0] * base_img.shape[1]
+            area_ratio = part_area / base_area
+            
+            # Adaptive scaling: larger parts get smaller scale factors
+            if area_ratio > 0.1:  # Large parts (>10% of base image)
+                scale_factor = 0.4
+            elif area_ratio > 0.05:  # Medium parts (5-10% of base image)
+                scale_factor = 0.6
+            else:  # Small parts (<5% of base image)
+                scale_factor = 0.8
+            
+            # Additional adjustment for very small parts to make them more visible
+            if area_ratio < 0.2:  # Parts smaller than 20% of base image
+                scale_factor = min(1.0, scale_factor * 1.5)  # Increase scale by 50% but cap at 100%
+            
+            print(f"  Part area ratio: {area_ratio:.3f}, using scale factor: {scale_factor}")
+            
+            base_img = stitch_part_with_bounding_box_fit(base_img, ref_img, segmented_part, data['outputDir'].lstrip('/'), ref['className'], scale_factor=scale_factor)
         
-        # Save result
+        # Save the final stitched image
         output_dir = os.path.join(os.getcwd(), 'public', data['outputDir'].lstrip('/'))
         os.makedirs(output_dir, exist_ok=True)
         
         result_path = os.path.join(output_dir, 'result.jpg')
-        print(f"\nSaving result to: {result_path}")
+        print(f"\nSaving stitched image to: {result_path}")
         cv2.imwrite(result_path, base_img)
         
-        # Save output
-        output = {
+        # Create output.json
+        output_data = {
             'success': True,
-            'stitchedImageUrl': f"{data['outputDir']}/result.jpg"
+            'stitchedImageUrl': f"{data['outputDir']}/result.jpg",
+            'message': 'Reference images placed at exact segmented part coordinates with scaling'
         }
         
-        with open(os.path.join(output_dir, 'output.json'), 'w') as f:
-            json.dump(output, f)
+        output_json_path = os.path.join(output_dir, 'output.json')
+        with open(output_json_path, 'w') as f:
+            json.dump(output_data, f, indent=2)
         
-        print("Stitching complete")
+        print("Stitching completed successfully!")
+        print(f"Output saved to: {output_json_path}")
         
     except Exception as e:
-        print(f"Error: {str(e)}", file=sys.stderr)
-        if 'data' in locals():
-            output_dir = os.path.join(os.getcwd(), 'public', data['outputDir'].lstrip('/'))
-            with open(os.path.join(output_dir, 'output.json'), 'w') as f:
-                json.dump({'success': False, 'error': str(e)}, f)
+        print(f"Error in main: {str(e)}")
+        
+        # Create error output file
+        try:
+            if 'data' in locals() and 'outputDir' in data:
+                output_dir = os.path.join(os.getcwd(), 'public', data['outputDir'].lstrip('/'))
+                os.makedirs(output_dir, exist_ok=True)
+                
+                error_output = {
+                    'success': False,
+                    'error': str(e)
+                }
+                
+                output_json_path = os.path.join(output_dir, 'output.json')
+                with open(output_json_path, 'w') as f:
+                    json.dump(error_output, f, indent=2)
+        except Exception as write_error:
+            print(f"Failed to write error output: {write_error}")
+        
         sys.exit(1)
 
 if __name__ == '__main__':
-    main() 
+    main()

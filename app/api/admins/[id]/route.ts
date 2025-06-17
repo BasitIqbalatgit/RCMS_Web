@@ -8,9 +8,9 @@ import bcrypt from 'bcrypt';
 // Fetch admin by _id
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const adminId = params.id;
+  const { id: adminId } = await params;
 
   try {
     await connectDB();
@@ -76,11 +76,11 @@ export async function GET(
 // Update admin
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const adminId = params.id;
+    const { id: adminId } = await params;
     const updateData = await request.json();
     console.log(`Received request to update admin ${adminId} with data:`, updateData);
 
@@ -167,7 +167,7 @@ export async function PUT(
       emailVerified: updatedAdmin.emailVerified,
     });
   } catch (error) {
-    const adminId = params.id;
+    const { id: adminId } = await params;
     console.error(`Error updating admin (_id: ${adminId}):`, error);
     return NextResponse.json(
       { error: 'Failed to update admin', code: 'UPDATE_ERROR', details: error instanceof Error ? error.message : String(error) },
@@ -179,11 +179,11 @@ export async function PUT(
 // Delete admin
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const adminId = params.id;
+    const { id: adminId } = await params;
     console.log(`Received request to delete admin: ${adminId}`);
 
     if (!mongoose.isValidObjectId(adminId)) {
@@ -221,7 +221,7 @@ export async function DELETE(
 
     return NextResponse.json({ message: 'Admin deleted successfully' });
   } catch (error) {
-    const adminId = params.id;
+    const { id: adminId } = await params;
     console.error(`Error deleting admin (_id: ${adminId}):`, error);
     return NextResponse.json(
       { error: 'Failed to delete admin', code: 'DELETE_ERROR', details: error instanceof Error ? error.message : String(error) },
