@@ -19,15 +19,15 @@ const ReferenceImages: React.FC<ReferenceImagesProps> = ({
 
   // Static image paths for headlights
   const leftHeadlightImages = [
-    '/Headlight - -L-/1.jpg',
-    '/Headlight - -L-/2.jpg',
-    '/Headlight - -L-/3.jpg'
+    '/Headlight - -L-/1.png',
+    '/Headlight - -L-/2.png',
+    '/Headlight - -L-/3.png'
   ];
 
   const rightHeadlightImages = [
-    '/Headlight - -R-/1.jpg',
-    '/Headlight - -R-/2.jpg',
-    '/Headlight - -R-/3.jpg'
+    '/Headlight - -R-/1.png',
+    '/Headlight - -R-/2.png',
+    '/Headlight - -R-/3.png'
   ];
 
   useEffect(() => {

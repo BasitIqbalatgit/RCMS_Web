@@ -110,15 +110,48 @@ def stitch_part_with_bounding_box_fit(base_img, reference_img, part_info, output
         target_width = int(bbox_width * scale_factor)
         target_height = int(bbox_height * scale_factor)
         
-        # Adjust dimensions to match the target aspect ratio (width / height)
-        if target_width / target_height > target_aspect:
-            # Too wide: reduce width to match aspect ratio
-            target_width = int(target_height * target_aspect)
+        # Apply headlight-specific adjustments before general aspect ratio adjustment
+        if class_name == "Headlight - -L-":
+            # For left headlight, use different scaling and positioning
+            # Since left headlight has more width/height, use a smaller scale factor
+            left_scale_factor = scale_factor * 0.6  # Reduce scale by 20% for left headlight
+            target_width = int(bbox_width * left_scale_factor)
+            target_height = int(bbox_height * left_scale_factor)
+            
+            # Preserve aspect ratio of the left headlight image
+            left_aspect = ref_width / ref_height
+            if target_width / target_height > left_aspect:
+                target_width = int(target_height * left_aspect)
+            else:
+                target_height = int(target_width / left_aspect)
+            
+            print(f"  Left headlight: scale={left_scale_factor:.2f}, size={target_width}x{target_height}")
+            
+        elif class_name == "Headlight - -R-":
+            # For right headlight, use different scaling and positioning
+            # Since right headlight is smaller, use a larger scale factor
+            right_scale_factor = scale_factor * 1.2  # Increase scale by 20% for right headlight
+            target_width = int(bbox_width * right_scale_factor)
+            target_height = int(bbox_height * right_scale_factor)
+            
+            # Preserve aspect ratio of the right headlight image
+            right_aspect = ref_width / ref_height
+            if target_width / target_height > right_aspect:
+                target_width = int(target_height * right_aspect)
+            else:
+                target_height = int(target_width / right_aspect)
+            
+            print(f"  Right headlight: scale={right_scale_factor:.2f}, size={target_width}x{target_height}")
         else:
-            # Too tall: reduce height to match aspect ratio
-            target_height = int(target_width / target_aspect)
+            # For other parts, use the general aspect ratio adjustment
+            if target_width / target_height > target_aspect:
+                # Too wide: reduce width to match aspect ratio
+                target_width = int(target_height * target_aspect)
+            else:
+                # Too tall: reduce height to match aspect ratio
+                target_height = int(target_width / target_aspect)
         
-        print(f"  Target bounding box (scaled by {scale_factor}, adjusted to aspect {target_aspect}): {target_width}x{target_height}")
+        print(f"  Target bounding box (scaled by {scale_factor}, adjusted to aspect): {target_width}x{target_height}")
         
         # Check if bounding box fits within image bounds
         if bbox_x + target_width > base_width:
@@ -143,82 +176,83 @@ def stitch_part_with_bounding_box_fit(base_img, reference_img, part_info, output
         
         # Apply position adjustments based on part class
         if class_name == "Headlight - -L-":
-            # Move left headlight more to the left
-            adjusted_x = max(0, adjusted_x - 7)  # Move 20 pixels left
-            adjusted_y = max(0, adjusted_y - 9)  # Move 10 pixels up
-            print(f"  Adjusted left headlight position: moved 20px left")
+            # Adjust positioning for left headlight
+            adjusted_x = max(0, adjusted_x - 0)  # Move more to the left
+            adjusted_y = max(0, adjusted_y + 2)   # Move slightly up
+            print(f"  Left headlight position adjusted: ({adjusted_x}, {adjusted_y})")
+            
         elif class_name == "Headlight - -R-":
-            # Move right headlight more to the right
-            adjusted_x = min(base_width - target_width, adjusted_x + 0)  # Move 15 pixels right
-            adjusted_y = max(0, adjusted_y +4)  # Move 10 pixels up
-            print(f"  Adjusted right headlight position: moved 15px right")
+            # Adjust positioning for right headlight
+            adjusted_x = min(base_width - target_width, adjusted_x + 0)  # Move slightly to the right
+            adjusted_y = max(0, adjusted_y + 1)   # Move slightly down
+            print(f"  Right headlight position adjusted: ({adjusted_x}, {adjusted_y})")
+        
+        # Re-check bounds after adjustments
+        if adjusted_x + target_width > base_width:
+            adjusted_x = max(0, base_width - target_width)
+        if adjusted_y + target_height > base_height:
+            adjusted_y = max(0, base_height - target_height)
         
         print(f"  Final placement: ({adjusted_x}, {adjusted_y}) with scaled bounding box {target_width}x{target_height}")
-        
-        # Create a copy of the base image
-        result_img = base_img.copy()
         
         # Step 1: Resize reference image to fit the scaled bounding box dimensions
         print(f"  Resizing reference image from {ref_width}x{ref_height} to {target_width}x{target_height}")
         resized_ref = cv2.resize(reference_img, (target_width, target_height), interpolation=cv2.INTER_AREA)
 
-        # Handle transparency: if image has 4 channels (RGBA), use alpha channel for blending
+        # Handle transparency for PNG images
         if resized_ref.shape[2] == 4:
+            # PNG with alpha channel - use proper alpha blending
+            print(f"  Processing PNG with transparency using alpha blending")
+            
             # Extract alpha channel and normalize it
             alpha = resized_ref[:, :, 3].astype(np.float32) / 255.0
-            # Convert to BGR for processing
-            resized_ref_bgr = cv2.cvtColor(resized_ref, cv2.COLOR_BGRA2BGR)
-            use_alpha_blending = True
+            
+            # Convert RGBA to BGR for processing
+            resized_ref_bgr = cv2.cvtColor(resized_ref, cv2.COLOR_RGBA2BGR)
+            
+            # Create a copy of the base image
+            result_img = base_img.copy()
+            
+            # Extract the bounding box region from base image
+            bbox_region = result_img[adjusted_y:adjusted_y+target_height, adjusted_x:adjusted_x+target_width]
+            
+            # Convert regions to float for blending
+            bbox_region_float = bbox_region.astype(np.float32)
+            ref_region_float = resized_ref_bgr.astype(np.float32)
+            
+            # Convert alpha to 3-channel for blending
+            alpha_3ch = np.stack([alpha, alpha, alpha], axis=2)
+            
+            # Blend using alpha: result = background * (1 - alpha) + foreground * alpha
+            blended = bbox_region_float * (1 - alpha_3ch) + ref_region_float * alpha_3ch
+            
+            # Convert back to uint8 and ensure values are in valid range
+            blended = np.clip(blended, 0, 255).astype(np.uint8)
+            
+            # Place the blended result back into the base image
+            result_img[adjusted_y:adjusted_y+target_height, adjusted_x:adjusted_x+target_width] = blended
+            
+            print(f"  Successfully placed PNG with transparency using alpha blending")
+            
         else:
-            # For 3-channel images, create background removal mask
-            ref_hsv = cv2.cvtColor(resized_ref, cv2.COLOR_BGR2HSV)
+            # No transparency - use direct placement
+            print(f"  Using full reference image without transparency")
             
-            # Create mask for white/light backgrounds
-            white_lower = np.array([0, 0, 200])
-            white_upper = np.array([180, 30, 255])
-            white_mask = cv2.inRange(ref_hsv, white_lower, white_upper)
+            # Convert to BGR if needed
+            if resized_ref.shape[2] == 1:
+                # Grayscale to BGR
+                resized_ref = cv2.cvtColor(resized_ref, cv2.COLOR_GRAY2BGR)
+            elif resized_ref.shape[2] == 3:
+                # Already 3 channels, ensure it's BGR
+                print(f"  Image already has 3 channels")
             
-            # Create mask for very light gray backgrounds
-            light_gray_lower = np.array([0, 0, 180])
-            light_gray_upper = np.array([180, 20, 220])
-            light_gray_mask = cv2.inRange(ref_hsv, light_gray_lower, light_gray_upper)
+            # Create a copy of the base image
+            result_img = base_img.copy()
             
-            # Combine background masks
-            background_mask = cv2.bitwise_or(white_mask, light_gray_mask)
+            # Place the reference image directly into the bounding box region
+            result_img[adjusted_y:adjusted_y+target_height, adjusted_x:adjusted_x+target_width] = resized_ref
             
-            # Invert to get foreground mask
-            alpha = cv2.bitwise_not(background_mask).astype(np.float32) / 255.0
-            resized_ref_bgr = resized_ref
-            use_alpha_blending = False
-        
-        # Clean up the alpha mask
-        kernel = np.ones((3,3), np.uint8)
-        alpha = cv2.morphologyEx(alpha, cv2.MORPH_CLOSE, kernel)
-        alpha = cv2.morphologyEx(alpha, cv2.MORPH_OPEN, kernel)
-        
-        # Apply Gaussian blur for smooth edges
-        alpha = cv2.GaussianBlur(alpha, (5, 5), 0)
-        
-        # Convert alpha to 3-channel for blending
-        alpha_3ch = np.stack([alpha, alpha, alpha], axis=2)
-        
-        # Step 3: Extract the bounding box region from base image
-        bbox_region = result_img[adjusted_y:adjusted_y+target_height, adjusted_x:adjusted_x+target_width]
-        
-        # Step 4: Blend the reference image into the bounding box region
-        bbox_region_float = bbox_region.astype(np.float32)
-        ref_region_float = resized_ref_bgr.astype(np.float32)
-        
-        # Blend using the alpha mask
-        blended = bbox_region_float * (1 - alpha_3ch) + ref_region_float * alpha_3ch
-        
-        # Convert back to uint8 and ensure values are in valid range
-        blended = np.clip(blended, 0, 255).astype(np.uint8)
-        
-        # Step 5: Place the blended result back into the base image at the exact bounding box coordinates
-        result_img[adjusted_y:adjusted_y+target_height, adjusted_x:adjusted_x+target_width] = blended
-        
-        print(f"  Successfully placed reference image in scaled bounding box with background removal")
+            print(f"  Successfully placed reference image without background removal")
         
         return result_img
         
