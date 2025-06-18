@@ -580,18 +580,7 @@ const ApplyModification: React.FC = () => {
             </div>
           )}
 
-          {/* Error Display - Show prominently */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700">{error}</p>
-              <button
-                onClick={handleReset}
-                className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                Try Again
-              </button>
-            </div>
-          )}
+         
 
           {!showResults ? (
             // Upload and Detection Section
@@ -651,7 +640,7 @@ const ApplyModification: React.FC = () => {
             {classificationResult && (
               <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
                 <h3 className="font-semibold text-green-800 mb-2">Classification Result</h3>
-                <p className="text-green-700">{classificationResult}</p>
+                <p className="text-green-700">{classificationResult.includes('not') ? "Either It is not a Car or the image is not taken from the correct angle.": "This is a Car"}</p>
               </div>
             )}
 
@@ -723,18 +712,7 @@ const ApplyModification: React.FC = () => {
                 </div>
               )}
 
-              {/* Error Display */}
-              {error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="text-red-700">{error}</p>
-                  <button
-                    onClick={handleReset}
-                    className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    Try Again
-                  </button>
-                </div>
-              )}
+              
 
               {/* Segmented Results */}
               {segmentedResult && !isSegmenting && !error && (

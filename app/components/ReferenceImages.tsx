@@ -30,6 +30,12 @@ const ReferenceImages: React.FC<ReferenceImagesProps> = ({
     '/Headlight - -R-/3.png'
   ];
 
+  const frontBumper =[
+    '/Front bumper/1.png',
+    '/Front bumper/2.png',
+    '/Front bumper/3.png'
+  ]
+
   useEffect(() => {
     setIsLoading(true);
     setError(null);
@@ -37,8 +43,8 @@ const ReferenceImages: React.FC<ReferenceImagesProps> = ({
     // Check if the images exist
     const checkImages = async () => {
       try {
-        if (className === "Headlight - -L-" || className === "Headlight - -R-") {
-          const imagesToCheck = className === "Headlight - -L-" ? leftHeadlightImages : rightHeadlightImages;
+        if (className === "Headlight - -L-" || className === "Headlight - -R-" || className === "Front bumper") {
+          const imagesToCheck = className === "Headlight - -L-" ? leftHeadlightImages : (className === "Front bumper"?  frontBumper : rightHeadlightImages);
           for (const imagePath of imagesToCheck) {
             const response = await fetch(imagePath, { method: 'HEAD' });
             if (!response.ok) {
@@ -80,13 +86,17 @@ const ReferenceImages: React.FC<ReferenceImagesProps> = ({
   }
 
   // Handle headlight images
-  if (className === "Headlight - -L-" || className === "Headlight - -R-") {
-    const images = className === "Headlight - -L-" ? leftHeadlightImages : rightHeadlightImages;
-    const headlightType = className === "Headlight - -L-" ? "Left" : "Right";
+  if (className === "Headlight - -L-" || className === "Headlight - -R-" || className === "Front bumper") {
+    const images = className === "Headlight - -L-" ? leftHeadlightImages : 
+                   className === "Headlight - -R-" ? rightHeadlightImages : 
+                   frontBumper;
+    const partType = className === "Headlight - -L-" ? "Left Headlight" : 
+                     className === "Headlight - -R-" ? "Right Headlight" : 
+                     "Front Bumper";
 
     return (
       <div className="p-4 bg-gray-50 rounded-lg">
-        <h3 className="text-lg font-semibold mb-4">{headlightType} Headlight Reference Images</h3>
+        <h3 className="text-lg font-semibold mb-4">{partType} Reference Images</h3>
         <div className="grid grid-cols-3 gap-4">
           {images.map((imagePath, index) => (
             <div
@@ -98,7 +108,7 @@ const ReferenceImages: React.FC<ReferenceImagesProps> = ({
             >
               <Image
                 src={imagePath}
-                alt={`${headlightType} Headlight Reference ${index + 1}`}
+                alt={`${partType} Reference ${index + 1}`}
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
