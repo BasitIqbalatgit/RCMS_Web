@@ -3,6 +3,7 @@ import Features from "@/components/landingPage/Features";
 import Footer from "@/components/landingPage/Footer";
 import HomeScreen from "@/components/landingPage/HomeScreen";
 import NavbarComponent from "@/components/landingPage/Navbar";
+import Pricing from "@/components/landingPage/Pricing";
 import Testimonials from "@/components/landingPage/Testimonials";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
@@ -15,6 +16,7 @@ export default function Home() {
       <NavbarComponent />
       <HomeScreen />
       <Features />
+      <Pricing />
       <Testimonials />
       <Faqs />
 

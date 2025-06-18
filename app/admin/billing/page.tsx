@@ -1,6 +1,3 @@
-
-
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -19,9 +16,9 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY);
 
 // Credit packages - you can modify these as needed
 const creditPackages = [
-    { credits: 100, price: 9.99, popular: false },
-    { credits: 500, price: 39.99, popular: true },
-    { credits: 1000, price: 69.99, popular: false },
+    { credits: 100, price: 9.99, popular: false, savings: '0%' },
+    { credits: 500, price: 39.99, popular: true, savings: '20%' },
+    { credits: 1000, price: 69.99, popular: false, savings: '30%' },
 ];
 
 const BillingPage = () => {
@@ -115,6 +112,14 @@ const BillingPage = () => {
                                         <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                                             <span className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
                                                 Most Popular
+                                            </span>
+                                        </div>
+                                    )}
+                                    
+                                    {pkg.savings !== '0%' && (
+                                        <div className="absolute -top-3 -right-3">
+                                            <span className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold">
+                                                Save {pkg.savings}
                                             </span>
                                         </div>
                                     )}
