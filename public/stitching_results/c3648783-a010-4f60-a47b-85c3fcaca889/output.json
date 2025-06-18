@@ -1,4 +1,0 @@
-{
-  "success": false,
-  "error": "OpenCV(4.11.0) D:\\a\\opencv-python\\opencv-python\\opencv\\modules\\imgproc\\src\\grabcut.cpp:557: error: (-5:Bad argument) image must have CV_8UC3 type in function 'cv::grabCut'\n"
-}

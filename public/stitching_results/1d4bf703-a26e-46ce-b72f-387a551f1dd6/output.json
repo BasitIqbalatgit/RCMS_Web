@@ -1,1 +1,0 @@
-{"success": false, "error": "OpenCV(4.11.0) D:\\a\\opencv-python\\opencv-python\\opencv\\modules\\core\\src\\arithm.cpp:1344: error: (-215:Assertion failed) src1.empty() == src2.empty() in function 'cv::addWeighted'\n"}

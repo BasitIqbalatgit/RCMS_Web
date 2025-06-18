@@ -68,6 +68,7 @@ const RecentWorkPage: React.FC = () => {
             throw new Error('Failed to fetch modifications');
           }
           const data = await response.json();
+          console.log('Fetched modifications:', data);
           setAllModifications(data);
           setFilteredModifications(data);
         } catch (err) {
@@ -451,13 +452,6 @@ const RecentWorkPage: React.FC = () => {
       ) : (
         <div className="space-y-4">
           {paginatedData.map((work) => {
-            let details: ModificationDetails = {};
-            try {
-              details = JSON.parse(work.modification_details);
-            } catch (err) {
-              console.error('Failed to parse modification details:', err);
-            }
-
             return (
               <Card
                 key={work._id}
@@ -465,24 +459,56 @@ const RecentWorkPage: React.FC = () => {
               >
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-lg font-semibold text-gray-700">
-                    {work.modification_type} - {work.vehicle_part}
+                    Modification - {work.vehicle_part || 'Car Part'}
                   </CardTitle>
                   <Badge className="bg-green-500 text-white">{work.status}</Badge>
                 </CardHeader>
                 <CardContent className="flex flex-col md:flex-row gap-6">
-                  <img
-                    src={work.modified_image_url}
-                    alt={`${work.modification_type} Preview`}
-                    className="w-32 h-32 object-cover rounded-md border"
-                  />
+                  <div className="w-32 h-32 relative">
+                    {work.modified_image_url ? (
+                      <>
+                        <img
+                          src={work.modified_image_url}
+                          alt="Modification Preview"
+                          className="w-full h-full object-cover rounded-md border"
+                          onError={(e) => {
+                            console.error('Failed to load image:', work.modified_image_url);
+                            e.currentTarget.style.display = 'none';
+                            // Show fallback
+                            const fallback = e.currentTarget.parentElement?.querySelector('.fallback');
+                            if (fallback) {
+                              (fallback as HTMLElement).style.display = 'flex';
+                            }
+                          }}
+                          onLoad={() => {
+                            console.log('Successfully loaded image:', work.modified_image_url);
+                          }}
+                        />
+                        <div className="fallback hidden w-full h-full bg-gray-200 rounded-md border flex items-center justify-center">
+                          <div className="text-center text-gray-500">
+                            <div className="text-xs">Image</div>
+                            <div className="text-xs">Not Available</div>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="w-full h-full bg-gray-200 rounded-md border flex items-center justify-center">
+                        <div className="text-center text-gray-500">
+                          <div className="text-xs">No Image</div>
+                          <div className="text-xs">URL</div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex-1 space-y-2">
                     <p className="text-sm text-gray-600">
-                      <strong>Details:</strong>{' '}
-                      {Object.entries(details)
-                        .filter(([key]) => !key.endsWith('_reference'))
-                        .map(([key, value]) => `${key}: ${value}`)
-                        .join(', ')}
+                      <strong>Image URL:</strong> {work.modified_image_url || 'Not available'}
                     </p>
+                    {work.modification_details && (
+                      <p className="text-sm text-gray-600">
+                        <strong>Details:</strong> {work.modification_details}
+                      </p>
+                    )}
                     <p className="text-sm text-gray-600">
                       <strong>Timestamp:</strong>{' '}
                       {new Date(work.timestamp).toLocaleString()}

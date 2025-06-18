@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     } = data;
 
     // Validate required fields
-    if (!original_image_url || !modified_image_url || !modification_type || !vehicle_part || !description) {
+    if (!original_image_url || !modified_image_url || !description) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }

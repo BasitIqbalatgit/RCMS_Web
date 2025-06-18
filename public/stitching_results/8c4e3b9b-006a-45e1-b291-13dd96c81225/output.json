@@ -1,4 +1,0 @@
-{
-  "success": false,
-  "error": "cannot access local variable 'adjusted_y' where it is not associated with a value"
-}

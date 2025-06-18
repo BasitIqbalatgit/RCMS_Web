@@ -36,8 +36,7 @@ export async function POST(req: Request) {
     }
 
     // Validate required fields
-    if (!original_image_url || !modified_image_url || !modification_type || 
-        !vehicle_part || !description || !modification_details) {
+    if (!original_image_url || !modified_image_url || !description || !modification_details) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -48,8 +47,6 @@ export async function POST(req: Request) {
       operator_id,
       original_image_url,
       modified_image_url,
-      modification_type,
-      vehicle_part,
       description,
       modification_details,
       status: status || 'Saved',

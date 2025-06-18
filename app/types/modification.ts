@@ -10,10 +10,10 @@ export interface Modification {
   operator_id: string;
   original_image_url: string;
   modified_image_url: string;
-  modification_type: string;
-  vehicle_part: string;
+  modification_type?: string;
+  vehicle_part?: string;
   description: string;
-  modification_details: string; // Stored as JSON string
+  modification_details: string;
   status: ModificationStatus;
   timestamp: string;
   created_at?: string;

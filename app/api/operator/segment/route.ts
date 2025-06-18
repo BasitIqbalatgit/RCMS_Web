@@ -18,6 +18,7 @@ interface ResponseData {
         y: number;
         w: number;
         h: number;
+        mask_contour?: number[][];
     }[];
     error?: string;
 }
@@ -107,9 +108,20 @@ export async function POST(req: NextRequest): Promise<NextResponse<ResponseData>
 
         // Run SAM segmentation
         const samScriptPath = path.join(process.cwd(), 'sam_segmentation.py');
+        console.log(`Running SAM script: ${samScriptPath}`);
+        console.log(`SAM input path: ${samInputPath}`);
+        console.log(`Output directory: ${outputDir}`);
+        
         const samProcess = spawn(PYTHON_EXECUTABLE, [samScriptPath, samInputPath]);
 
         let samError = '';
+        let samOutput = '';
+        
+        samProcess.stdout.on('data', (data) => {
+            samOutput += data.toString();
+            console.log(`SAM Output: ${data.toString()}`);
+        });
+        
         samProcess.stderr.on('data', (data) => {
             samError += data.toString();
             console.error(`SAM Error: ${data}`);
@@ -117,6 +129,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<ResponseData>
 
         await new Promise<void>((resolve, reject) => {
             samProcess.on('close', (code) => {
+                console.log(`SAM process exited with code: ${code}`);
+                console.log(`SAM output: ${samOutput}`);
+                console.log(`SAM error: ${samError}`);
+                
                 if (code === 0) {
                     resolve();
                 } else {
@@ -135,7 +151,26 @@ export async function POST(req: NextRequest): Promise<NextResponse<ResponseData>
 
         // Read segmentation results
         const resultsPath = path.join(outputDir, 'segmentation_results.json');
+        console.log(`Looking for segmentation results at: ${resultsPath}`);
+        
+        // Check if the file exists
+        try {
+            await fs.access(resultsPath);
+            console.log('Segmentation results file exists');
+        } catch (error) {
+            console.error('Segmentation results file does not exist');
+            console.log('Files in output directory:');
+            try {
+                const files = await fs.readdir(outputDir);
+                console.log(files);
+            } catch (dirError) {
+                console.error('Could not read output directory:', dirError);
+            }
+            throw new Error(`Segmentation results file not found: ${resultsPath}`);
+        }
+        
         const resultsData = await fs.readFile(resultsPath, 'utf-8');
+        console.log(`Segmentation results data: ${resultsData}`);
         const segmentedParts = JSON.parse(resultsData);
 
         // Convert absolute paths to relative URLs and include coordinates
@@ -158,6 +193,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ResponseData>
                     y,
                     w,
                     h,
+                    mask_contour: part.mask_contour || [],
                     segmented_image_path: `/segments/${timestamp}/${path.basename(part.segmented_image_path)}`,
                     mask_path: `/segments/${timestamp}/${path.basename(part.mask_path)}`
                 };

@@ -1,22 +1,18 @@
-import sys
 import cv2
-import json
 import numpy as np
+import json
+import os
+import sys
 from segment_anything import SamPredictor, sam_model_registry
 import torch
-import os
 
 # Path to the SAM model
 SAM_MODEL_PATH = 'sam_vit_l_0b3195.pth'
 
 def process_image(image_path, detections, output_dir, predictor):
-    """
-    Process a single image with multiple detections
-    """
     print(f"Processing image: {image_path}")
     
     # Load image
-    print("Loading image...")
     image = cv2.imread(image_path)
     if image is None:
         raise ValueError(f"Failed to load image from {image_path}")
@@ -31,9 +27,7 @@ def process_image(image_path, detections, output_dir, predictor):
     modified_image = image.copy()
     
     # Set image for SAM
-    print("Setting image in SAM predictor...")
     predictor.set_image(image_rgb)
-    print("Image set in predictor")
     
     print(f"Processing {len(detections)} detections")
     segmented_parts = []
@@ -49,33 +43,42 @@ def process_image(image_path, detections, output_dir, predictor):
         print(f"Center point: {center_point}")
         print(f"Bounding box: {bbox}")
         
-        # Use both point and box prompts for better segmentation
-        print("Running SAM prediction...")
+        # Run SAM prediction
         masks, scores, logits = predictor.predict(
             point_coords=center_point,
-            point_labels=np.array([1]),  # 1 for foreground point
-            box=np.array(bbox),  # Add box prompt
+            point_labels=np.array([1]),
+            box=np.array(bbox),
             multimask_output=True,
         )
         print(f"Got {len(masks)} masks, best score: {max(scores):.3f}")
         
-        # Choose the best mask (highest score)
+        # Choose the best mask
         best_mask_idx = np.argmax(scores)
         mask = masks[best_mask_idx]
         
         # Verify mask is not empty
         mask_area = np.sum(mask)
         print(f"Mask area: {mask_area} pixels")
-        if mask_area < 100:  # If mask is too small, it might be invalid
+        if mask_area < 100:
             print(f"Warning: Mask for {class_name} is very small, might be invalid")
             continue
+        
+        # Extract mask contours
+        mask_uint8 = (mask * 255).astype(np.uint8)
+        contours, _ = cv2.findContours(mask_uint8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not contours:
+            print(f"Warning: No contours found for {class_name}")
+            continue
+        # Convert largest contour to list of points
+        largest_contour = max(contours, key=cv2.contourArea)
+        contour_points = largest_contour.reshape(-1, 2).tolist()  # List of [x, y] coordinates
         
         # Add to combined mask
         combined_mask = np.logical_or(combined_mask, mask)
         
         # Create masked image for this part
         masked_image = image.copy()
-        masked_image[~mask] = 0  # Set background to black
+        masked_image[~mask] = 0
         
         # Save individual segmented part
         part_filename = f"{class_name}_{i}_{detection['confidence']:.2f}.jpg"
@@ -83,11 +86,11 @@ def process_image(image_path, detections, output_dir, predictor):
         print(f"Saving segmented part to: {part_path}")
         cv2.imwrite(part_path, masked_image)
         
-        # Also save just the mask
+        # Save mask
         mask_filename = f"{class_name}_{i}_mask.jpg"
         mask_path = os.path.join(output_dir, mask_filename)
         print(f"Saving mask to: {mask_path}")
-        cv2.imwrite(mask_path, (mask * 255).astype(np.uint8))
+        cv2.imwrite(mask_path, mask_uint8)
         
         segmented_parts.append({
             "class_name": class_name,
@@ -96,22 +99,16 @@ def process_image(image_path, detections, output_dir, predictor):
             "center_point": detection['center_point'],
             "segmented_image_path": part_path,
             "mask_path": mask_path,
-            "mask_area": int(mask_area)
+            "mask_area": int(mask_area),
+            "mask_contour": contour_points  # New field for contour coordinates
         })
         print(f"Completed processing detection {i+1}")
     
-    if not segmented_parts:
-        print("Warning: No valid parts were segmented!")
-        # If no parts were segmented, just copy the original image
-        modified_image = image.copy()
-    else:
-        # Create modified image by removing segmented parts
-        # Convert the combined mask to 3 channels
-        mask_3channel = np.stack([combined_mask] * 3, axis=-1)
-        # Set segmented areas to black in the modified image
-        modified_image[mask_3channel] = 0
+    # Create modified image
+    mask_3channel = np.stack([combined_mask] * 3, axis=-1)
+    modified_image[mask_3channel] = 0
     
-    # Save the modified image
+    # Save modified image
     modified_path = os.path.join(output_dir, 'modified.jpg')
     print(f"\nSaving modified image to: {modified_path}")
     cv2.imwrite(modified_path, modified_image)
@@ -194,4 +191,4 @@ def main():
             torch.cuda.empty_cache()
 
 if __name__ == "__main__":
-    main() 
+    main()

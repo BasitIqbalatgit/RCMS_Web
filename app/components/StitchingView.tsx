@@ -42,10 +42,8 @@ interface StitchingViewProps {
 }
 
 interface SaveModificationData {
-  modification_type: string;
-  vehicle_part: string;
   description: string;
-  modification_details: Record<string, string>;
+  modification_details: string;
 }
 
 interface SaveModificationResponse {
@@ -66,10 +64,8 @@ export default function StitchingView({
   const [error, setError] = useState<string | null>(null);
   const [showSaveModal, setShowSaveModal] = useState<boolean>(false);
   const [saveData, setSaveData] = useState<SaveModificationData>({
-    modification_type: '',
-    vehicle_part: '',
     description: '',
-    modification_details: {}
+    modification_details: ''
   });
 
   useEffect(() => {
@@ -178,18 +174,11 @@ export default function StitchingView({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          operator_id: session.user.id,
+          operator_id: session?.user?.id,
           original_image_url: segmentedImage,
           modified_image_url: stitchedImage,
-          modification_type: saveData.modification_type,
-          vehicle_part: saveData.vehicle_part,
           description: saveData.description,
-          modification_details: JSON.stringify({
-            ...saveData.modification_details,
-            ...Object.fromEntries(
-              selectedReferences.map(ref => [`${ref.className}_reference`, ref.imagePath])
-            )
-          }),
+          modification_details: saveData.modification_details,
           status: 'Saved',
           timestamp: new Date().toISOString(),
         }),
@@ -212,8 +201,8 @@ export default function StitchingView({
 
   const handleSaveModalSubmit = () => {
     // Validate required fields
-    if (!saveData.modification_type || !saveData.vehicle_part || !saveData.description) {
-      alert('Please fill in all required fields');
+    if (!saveData.description) {
+      alert('Please fill in the description field');
       return;
     }
 
@@ -387,50 +376,6 @@ export default function StitchingView({
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="modification_type">Modification Type</Label>
-                <Select
-                  value={saveData.modification_type}
-                  onValueChange={(value) => {
-                    console.log('Setting modification type:', value);
-                    setSaveData(prev => ({ ...prev, modification_type: value }));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Paint">Paint</SelectItem>
-                    <SelectItem value="Rims">Rims</SelectItem>
-                    <SelectItem value="Spoiler">Spoiler</SelectItem>
-                    <SelectItem value="Headlights">Headlights</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="vehicle_part">Vehicle Part</Label>
-                <Select
-                  value={saveData.vehicle_part}
-                  onValueChange={(value) => {
-                    console.log('Setting vehicle part:', value);
-                    setSaveData(prev => ({ ...prev, vehicle_part: value }));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select part" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {segmentedParts.map((part) => (
-                      <SelectItem key={part.class_name} value={part.class_name}>
-                        {part.class_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
@@ -440,6 +385,20 @@ export default function StitchingView({
                     setSaveData(prev => ({ ...prev, description: e.target.value }));
                   }}
                   placeholder="Enter modification description..."
+                  className="h-24"
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="modification_details">Modification Details</Label>
+                <Textarea
+                  id="modification_details"
+                  value={saveData.modification_details}
+                  onChange={(e) => {
+                    console.log('Setting modification details:', e.target.value);
+                    setSaveData(prev => ({ ...prev, modification_details: e.target.value }));
+                  }}
+                  placeholder="Enter modification details..."
                   className="h-24"
                 />
               </div>

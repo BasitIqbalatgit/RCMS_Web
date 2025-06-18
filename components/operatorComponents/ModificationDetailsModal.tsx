@@ -17,11 +17,11 @@ interface Modification {
   operator_id: string;
   original_image_url: string;
   modified_image_url: string;
-  modification_type: string;
-  modification_details: ModificationDetails;
+  modification_type?: string;
+  modification_details: string;
   status: 'Saved';
   timestamp: string;
-  vehicle_part: string;
+  vehicle_part?: string;
   description: string;
 }
 
@@ -43,7 +43,7 @@ const ModificationDetailsModal: React.FC<ModificationDetailsModalProps> = ({
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold">
-            {modification.modification_type} - {modification.vehicle_part}
+            Modification - {modification.vehicle_part || 'Car Part'}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-6">
@@ -79,9 +79,7 @@ const ModificationDetailsModal: React.FC<ModificationDetailsModalProps> = ({
             </p>
             <p className="text-sm text-gray-600">
               <strong>Details:</strong>{' '}
-              {Object.entries(modification.modification_details)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join(', ')}
+              {modification.modification_details}
             </p>
             <p className="text-sm text-gray-600">
               <strong>Operator ID:</strong> {modification.operator_id}
