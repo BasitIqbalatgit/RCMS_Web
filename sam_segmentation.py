@@ -78,7 +78,7 @@ def process_image(image_path, detections, output_dir, predictor):
         
         # Create masked image for this part
         masked_image = image.copy()
-        masked_image[~mask] = 0
+        masked_image[~mask] = 255
         
         # Save individual segmented part
         part_filename = f"{class_name}_{i}_{detection['confidence']:.2f}.jpg"

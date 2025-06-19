@@ -35,6 +35,17 @@ const ReferenceImages: React.FC<ReferenceImagesProps> = ({
     '/Front bumper/2.png',
     '/Front bumper/3.png'
   ]
+  const carHood =[
+    '/Car hood/1.jpeg',
+    '/Car hood/2.jpeg',
+    '/Car hood/3.jpeg'
+  ]
+  const leftSideMirror =[
+    '/Side mirror - -L-/1.png',
+    '/Side mirror - -L-/2.png',
+    '/Side mirror - -L-/3.png'
+  ]
+
 
   useEffect(() => {
     setIsLoading(true);
@@ -43,8 +54,8 @@ const ReferenceImages: React.FC<ReferenceImagesProps> = ({
     // Check if the images exist
     const checkImages = async () => {
       try {
-        if (className === "Headlight - -L-" || className === "Headlight - -R-" || className === "Front bumper") {
-          const imagesToCheck = className === "Headlight - -L-" ? leftHeadlightImages : (className === "Front bumper"?  frontBumper : rightHeadlightImages);
+        if (className === "Headlight - -L-" || className === "Headlight - -R-" || className === "Front bumper"|| className==="Car hood" || className==="Side mirror - -L-") {
+          const imagesToCheck = className === "Headlight - -L-" ? leftHeadlightImages : (className === "Front bumper"?  frontBumper : (className==="Car hood"? carHood: (className === "Side mirror - -L-" ? leftSideMirror : rightHeadlightImages)));
           for (const imagePath of imagesToCheck) {
             const response = await fetch(imagePath, { method: 'HEAD' });
             if (!response.ok) {
@@ -86,13 +97,13 @@ const ReferenceImages: React.FC<ReferenceImagesProps> = ({
   }
 
   // Handle headlight images
-  if (className === "Headlight - -L-" || className === "Headlight - -R-" || className === "Front bumper") {
+  if (className === "Headlight - -L-" || className === "Headlight - -R-" || className === "Front bumper" || className==="Car hood" || className === "Side mirror - -L-") {
     const images = className === "Headlight - -L-" ? leftHeadlightImages : 
                    className === "Headlight - -R-" ? rightHeadlightImages : 
-                   frontBumper;
+                   className ===  "Car hood" ? carHood : className === "Side mirror - -L-" ? leftSideMirror : frontBumper;
     const partType = className === "Headlight - -L-" ? "Left Headlight" : 
                      className === "Headlight - -R-" ? "Right Headlight" : 
-                     "Front Bumper";
+                     className === "Car hood" ? "Car Hood": className === "Side mirror - -L-" ? "Left Side Mirror" :"Front Bumper";
 
     return (
       <div className="p-4 bg-gray-50 rounded-lg">
